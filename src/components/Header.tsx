@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { Terminal, Upload, FileCode, Settings, Code2, FileText, GitHub } from 'lucide-react';
+import { Terminal, Upload, FileCode, Settings, Code2, FileText, Github } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 
@@ -38,7 +37,7 @@ const Header = () => {
             className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
           >
             <Button variant="outline" size="sm" className="hidden md:flex gap-1">
-              <GitHub className="h-4 w-4" />
+              <Github className="h-4 w-4" />
               <span>GitHub</span>
             </Button>
           </a>
