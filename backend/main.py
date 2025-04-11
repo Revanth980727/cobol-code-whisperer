@@ -39,7 +39,7 @@ class AnalysisResponse(BaseModel):
 def read_root():
     return {"status": "COBOL Code Whisperer API is running"}
 
-@app.post("/analyze-code/", response_model=AnalysisResponse)
+@app.post("/analyze-code/")
 async def analyze_code(file: UploadFile = File(...)):
     # Save the uploaded file content
     file_id = str(uuid.uuid4())
