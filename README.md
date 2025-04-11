@@ -14,15 +14,32 @@ COBOL Code Whisperer is an AI-powered tool designed to analyze legacy COBOL code
 - **Feedback Loop**: Built-in feedback system to continuously improve AI outputs
 - **Continuous Learning**: RFHL (Reinforcement Fine-tuning from Human Labels) ensures improved documentation quality over time
 
+## Project Architecture
+
+This project consists of two main components:
+
+### Frontend (React)
+- Modern React application with TypeScript
+- UI components built with Tailwind CSS and shadcn/ui
+- File upload, code viewing, and documentation display
+
+### Backend (Python)
+- FastAPI server for API endpoints
+- COBOL parser for code analysis
+- Local LLaMA 3 model integration for AI processing
+- Feedback collection and model fine-tuning
+
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js & npm installed ([install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating))
+- Python 3.8+ installed
 - A machine with GPU support for optimal local LLaMA 3 performance
 
 ### Installation
 
+#### Frontend Setup
 ```sh
 # Clone this repository
 git clone https://github.com/yourusername/cobol-code-whisperer.git
@@ -37,23 +54,41 @@ npm install
 npm run dev
 ```
 
+#### Backend Setup
+```sh
+# Navigate to the backend directory
+cd backend
+
+# Create a virtual environment
+python -m venv venv
+
+# Activate the virtual environment
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Start the FastAPI server
+uvicorn main:app --reload
+```
+
 ## Usage
 
-1. Navigate to the application in your web browser
-2. Click on "Upload" in the navigation menu
-3. Drag and drop your COBOL source file or click to select a file
-4. The system will process the code and generate documentation
-5. Review the generated documentation and provide feedback to improve future results
+1. Make sure both frontend and backend servers are running
+2. Navigate to the application in your web browser (usually http://localhost:5173)
+3. Click on "Upload" in the navigation menu
+4. Drag and drop your COBOL source file or click to select a file
+5. The system will process the code and generate documentation
+6. Review the generated documentation and provide feedback to improve future results
 
-## Project Architecture
+## API Endpoints
 
-The COBOL Code Whisperer consists of:
+The backend provides the following API endpoints:
 
-- **Frontend**: React-based UI with file upload, code viewing, and documentation display
-- **COBOL Parser**: Processes and chunks COBOL code for analysis
-- **Local LLaMA 3**: Provides AI-powered analysis and documentation generation
-- **Feedback System**: Captures user feedback for continuous model improvement
-- **RFHL Pipeline**: Uses feedback to fine-tune the LLaMA model for better results
+- `GET /`: Health check
+- `POST /analyze-code/`: Upload and analyze a COBOL file
+- `POST /feedback/`: Submit feedback on analysis results
+- `GET /file/{file_id}`: Retrieve content of a previously uploaded file
 
 ## Contributing
 
@@ -68,4 +103,3 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - The COBOL programming community
 - LLaMA 3 and open-source AI research
 - All contributors and testers who provide valuable feedback
-

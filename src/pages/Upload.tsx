@@ -9,20 +9,21 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { Loader2, FileWarning, RotateCw } from 'lucide-react';
+import { analyzeCobolFile, AnalysisResult } from '@/services/api';
 
 const Upload = () => {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [cobolCode, setCobolCode] = useState<string>('');
-  const [analysisResults, setAnalysisResults] = useState<any>(null);
+  const [analysisResults, setAnalysisResults] = useState<AnalysisResult | null>(null);
   const [activeTab, setActiveTab] = useState<string>('upload');
 
   const handleFileUpload = (uploadedFile: File) => {
     setIsUploading(true);
     setFile(uploadedFile);
     
-    // Read the file content
+    // Read the file content for display
     const reader = new FileReader();
     reader.onload = (e) => {
       const content = e.target?.result as string;
@@ -31,7 +32,7 @@ const Upload = () => {
       setActiveTab('code');
       
       // Begin analysis
-      simulateAnalysis(content);
+      handleAnalyzeCode(uploadedFile);
     };
     reader.onerror = () => {
       setIsUploading(false);
@@ -43,88 +44,25 @@ const Upload = () => {
     reader.readAsText(uploadedFile);
   };
 
-  // This is a simulation of the analysis process
-  // In a real implementation, this would call the backend API
-  const simulateAnalysis = (code: string) => {
+  const handleAnalyzeCode = async (fileToAnalyze: File) => {
     setIsAnalyzing(true);
     
-    // Simulate API delay
-    setTimeout(() => {
-      // Mock response data
-      const mockAnalysisData = {
-        summary: "This COBOL program (ACCTRANS) processes account transactions. It reads transaction records containing account number, transaction type (deposit or withdrawal), and amount. The program validates the transaction type, then routes to appropriate handling routines based on whether it's a deposit or withdrawal. For deposits, it updates the account balance by adding the amount. For withdrawals, it first verifies sufficient funds, then subtracts the amount if approved. The program includes error handling for invalid transaction types and insufficient funds scenarios. It also maintains transaction logs for auditing purposes.",
-        businessRules: [
-          "Transactions must be categorized as either deposits ('D') or withdrawals ('W')",
-          "Withdrawal transactions require a funds availability check before processing",
-          "Insufficient funds results in transaction rejection and error logging",
-          "All successful transactions are recorded in a transaction history file",
-          "Account balances are immediately updated after successful transactions",
-          "Invalid transaction types trigger an error report and are logged separately"
-        ],
-        codeStructure: [
-          {
-            division: "IDENTIFICATION DIVISION",
-            elements: [
-              {
-                name: "PROGRAM-ID: ACCTRANS",
-                description: "Account Transaction Processing Program"
-              }
-            ]
-          },
-          {
-            division: "DATA DIVISION",
-            elements: [
-              {
-                name: "WORKING-STORAGE SECTION",
-                description: "Defines transaction record structure, account records, and processing flags"
-              },
-              {
-                name: "FILE SECTION",
-                description: "Defines customer master file and transaction history file records"
-              }
-            ]
-          },
-          {
-            division: "PROCEDURE DIVISION",
-            elements: [
-              {
-                name: "MAIN-LOGIC",
-                description: "Main program flow - initializes, processes transactions, and finalizes"
-              },
-              {
-                name: "PROCESS-TRANSACTION",
-                description: "Routes to appropriate handler based on transaction type"
-              },
-              {
-                name: "HANDLE-DEPOSIT",
-                description: "Processes deposit transactions and updates account balance"
-              },
-              {
-                name: "HANDLE-WITHDRAWAL",
-                description: "Validates funds availability and processes withdrawals if approved"
-              },
-              {
-                name: "WRITE-TRANSACTION-HISTORY",
-                description: "Records successful transactions in the history file"
-              }
-            ]
-          }
-        ],
-        complexity: {
-          cyclomatic: 12,
-          linesOfCode: code.split('\n').length,
-          commentPercentage: 8
-        }
-      };
-      
-      setAnalysisResults(mockAnalysisData);
-      setIsAnalyzing(false);
+    try {
+      const result = await analyzeCobolFile(fileToAnalyze);
+      setAnalysisResults(result);
       setActiveTab('analysis');
       
       toast.success("Analysis complete", {
         description: "View the generated documentation and provide feedback to improve results."
       });
-    }, 3000);
+    } catch (error) {
+      toast.error("Analysis failed", {
+        description: "There was an error analyzing your COBOL file. Please try again."
+      });
+      console.error("Analysis error:", error);
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const resetAnalysis = () => {
@@ -184,7 +122,7 @@ const Upload = () => {
                         View Analysis Results
                       </Button>
                     ) : (
-                      <Button onClick={() => simulateAnalysis(cobolCode)}>
+                      <Button onClick={() => handleAnalyzeCode(file!)}>
                         Analyze Code
                       </Button>
                     )}
