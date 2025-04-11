@@ -1,73 +1,71 @@
-# Welcome to your Lovable project
 
-## Project info
+# COBOL Code Whisperer
 
-**URL**: https://lovable.dev/projects/b3e6448d-cc8b-486c-9334-e416e7152591
+COBOL Code Whisperer is an AI-powered tool designed to analyze legacy COBOL code and generate clear, comprehensive documentation. By leveraging local LLaMA 3 with RFHL (Reinforcement Fine-tuning from Human Labels), this tool helps organizations understand and maintain their legacy systems more effectively.
 
-## How can I edit this code?
+![COBOL Code Whisperer](https://lovable.dev/opengraph-image-p98pqg.png)
 
-There are several ways of editing your application.
+## Features
 
-**Use Lovable**
+- **COBOL Code Analysis**: Upload and analyze COBOL source code to extract business logic and documentation
+- **AI-Powered Documentation**: Generate human-readable documentation from complex COBOL programs
+- **Local Processing**: Uses local LLaMA 3 model for privacy and security
+- **Interactive UI**: Modern, user-friendly interface for code viewing and documentation
+- **Feedback Loop**: Built-in feedback system to continuously improve AI outputs
+- **Continuous Learning**: RFHL (Reinforcement Fine-tuning from Human Labels) ensures improved documentation quality over time
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/b3e6448d-cc8b-486c-9334-e416e7152591) and start prompting.
+## Getting Started
 
-Changes made via Lovable will be committed automatically to this repo.
+### Prerequisites
 
-**Use your preferred IDE**
+- Node.js & npm installed ([install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating))
+- A machine with GPU support for optimal local LLaMA 3 performance
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+### Installation
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# Clone this repository
+git clone https://github.com/yourusername/cobol-code-whisperer.git
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Navigate to the project directory
+cd cobol-code-whisperer
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Install dependencies
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start the development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Usage
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+1. Navigate to the application in your web browser
+2. Click on "Upload" in the navigation menu
+3. Drag and drop your COBOL source file or click to select a file
+4. The system will process the code and generate documentation
+5. Review the generated documentation and provide feedback to improve future results
 
-**Use GitHub Codespaces**
+## Project Architecture
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+The COBOL Code Whisperer consists of:
 
-## What technologies are used for this project?
+- **Frontend**: React-based UI with file upload, code viewing, and documentation display
+- **COBOL Parser**: Processes and chunks COBOL code for analysis
+- **Local LLaMA 3**: Provides AI-powered analysis and documentation generation
+- **Feedback System**: Captures user feedback for continuous model improvement
+- **RFHL Pipeline**: Uses feedback to fine-tune the LLaMA model for better results
 
-This project is built with:
+## Contributing
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-## How can I deploy this project?
+## License
 
-Simply open [Lovable](https://lovable.dev/projects/b3e6448d-cc8b-486c-9334-e416e7152591) and click on Share -> Publish.
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-## Can I connect a custom domain to my Lovable project?
+## Acknowledgments
 
-Yes it is!
+- The COBOL programming community
+- LLaMA 3 and open-source AI research
+- All contributors and testers who provide valuable feedback
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
