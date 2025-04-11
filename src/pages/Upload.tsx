@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import UploadArea from '@/components/UploadArea';
@@ -7,8 +7,14 @@ import AnalysisResults from '@/components/AnalysisResults';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Loader2, FileWarning, RotateCw } from 'lucide-react';
-import { analyzeCobolFile, AnalysisResult } from '@/services/api';
+import { Loader2, FileWarning, RotateCw, AlertCircle } from 'lucide-react';
+import { 
+  analyzeCobolFile, 
+  AnalysisResult, 
+  checkModelStatus,
+  ModelStatus 
+} from '@/services/api';
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 const Upload = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -17,6 +23,24 @@ const Upload = () => {
   const [cobolCode, setCobolCode] = useState<string>('');
   const [analysisResults, setAnalysisResults] = useState<AnalysisResult | null>(null);
   const [activeTab, setActiveTab] = useState<string>('upload');
+  const [modelStatus, setModelStatus] = useState<ModelStatus | null>(null);
+  const [modelChecked, setModelChecked] = useState(false);
+
+  // Check LLM model status on component mount
+  useEffect(() => {
+    const checkLLM = async () => {
+      try {
+        const status = await checkModelStatus();
+        setModelStatus(status);
+      } catch (error) {
+        console.error("Failed to check model status:", error);
+      } finally {
+        setModelChecked(true);
+      }
+    };
+    
+    checkLLM();
+  }, []);
 
   const handleFileUpload = (uploadedFile: File) => {
     setIsUploading(true);
@@ -44,6 +68,13 @@ const Upload = () => {
   };
 
   const handleAnalyzeCode = async (fileToAnalyze: File) => {
+    // Check model status before analyzing
+    if (modelStatus?.status === "not_loaded") {
+      toast.error("LLaMA 3 model is not loaded", {
+        description: "The backend LLM is not available. Analysis will use fallback methods."
+      });
+    }
+    
     setIsAnalyzing(true);
     
     try {
@@ -91,6 +122,25 @@ const Upload = () => {
             <p className="text-muted-foreground">
               Upload your COBOL source files to generate documentation and extract business logic
             </p>
+            
+            {modelStatus && modelChecked && (
+              <div className="mt-4">
+                {modelStatus.status === "ready" ? (
+                  <div className="flex items-center text-sm text-emerald-600 dark:text-emerald-400">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500 mr-2"></span>
+                    LLaMA 3 model loaded and ready
+                  </div>
+                ) : (
+                  <Alert variant="warning" className="mt-2">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>LLaMA 3 model not loaded</AlertTitle>
+                    <AlertDescription>
+                      The LLM is not available. Analysis will use fallback methods, which may provide less accurate results.
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+            )}
           </div>
           
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">

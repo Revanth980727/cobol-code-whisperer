@@ -28,6 +28,26 @@ export interface FeedbackData {
   corrected_summary?: string;
 }
 
+export interface ModelStatus {
+  status: "ready" | "not_loaded"
+}
+
+// Check if the LLM model is loaded and ready
+export const checkModelStatus = async (): Promise<ModelStatus> => {
+  try {
+    const response = await fetch(`${API_URL}/model-status`);
+    
+    if (!response.ok) {
+      throw new Error("Failed to check model status");
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error("Error checking model status:", error);
+    return { status: "not_loaded" };
+  }
+};
+
 // Function to upload and analyze a COBOL file
 export const analyzeCobolFile = async (file: File): Promise<AnalysisResult> => {
   try {
