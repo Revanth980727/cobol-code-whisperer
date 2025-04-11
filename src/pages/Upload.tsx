@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -70,6 +69,15 @@ const Upload = () => {
     setCobolCode('');
     setAnalysisResults(null);
     setActiveTab('upload');
+  };
+
+  const formatAnalysisData = (data: AnalysisResult) => {
+    return {
+      summary: data.summary,
+      businessRules: data.business_rules,
+      codeStructure: data.code_structure,
+      complexity: data.complexity
+    };
   };
 
   return (
@@ -177,7 +185,7 @@ const Upload = () => {
                     </div>
                   </div>
                   
-                  <AnalysisResults analysisData={analysisResults} />
+                  <AnalysisResults analysisData={formatAnalysisData(analysisResults)} />
                 </div>
               ) : (
                 <div className="text-center py-12">

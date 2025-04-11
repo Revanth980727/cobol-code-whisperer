@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -8,6 +7,7 @@ import { FileText, ArrowRight, ThumbsUp, ThumbsDown, AlertCircle, Sparkles, Laye
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import { submitFeedback } from '@/services/api';
 
 export interface AnalysisResultsProps {
   analysisData: {
@@ -27,12 +27,31 @@ export interface AnalysisResultsProps {
 
 const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysisData }) => {
   const { summary, businessRules, codeStructure, complexity } = analysisData;
+  const [feedbackRating, setFeedbackRating] = React.useState<number | null>(null);
+  const [feedbackComment, setFeedbackComment] = React.useState<string>('');
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = React.useState(false);
 
-  const handleFeedback = (positive: boolean) => {
+  const handleFeedback = async (positive: boolean) => {
+    const rating = positive ? 5 : 1;
+    setFeedbackRating(rating);
+    
     if (positive) {
-      toast.success("Positive feedback submitted", {
-        description: "Thank you for helping us improve our analysis."
-      });
+      try {
+        setIsSubmittingFeedback(true);
+        await submitFeedback({
+          file_id: "", // This should be passed from the parent component
+          rating: rating,
+          comment: "Positive feedback"
+        });
+        
+        toast.success("Positive feedback submitted", {
+          description: "Thank you for helping us improve our analysis."
+        });
+      } catch (error) {
+        console.error("Failed to submit feedback:", error);
+      } finally {
+        setIsSubmittingFeedback(false);
+      }
     } else {
       toast.custom((id) => (
         <div className="max-w-md w-full bg-white shadow-lg rounded-lg pointer-events-auto flex flex-col dark:bg-gray-900 dark:border dark:border-gray-700">
@@ -52,19 +71,41 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysisData }) => {
                   placeholder="What was incorrect or missing?" 
                   className="w-full text-sm"
                   rows={3}
+                  value={feedbackComment}
+                  onChange={(e) => setFeedbackComment(e.target.value)}
                 />
               </div>
               <div className="mt-3 flex gap-2">
                 <Button 
                   size="sm" 
-                  onClick={() => toast.dismiss(id)}
+                  onClick={async () => {
+                    try {
+                      setIsSubmittingFeedback(true);
+                      await submitFeedback({
+                        file_id: "", // This should be passed from the parent component
+                        rating: rating,
+                        comment: feedbackComment
+                      });
+                      toast.dismiss(id);
+                      toast.success("Feedback submitted", {
+                        description: "Thank you for your valuable feedback."
+                      });
+                    } catch (error) {
+                      console.error("Failed to submit feedback:", error);
+                      toast.error("Failed to submit feedback");
+                    } finally {
+                      setIsSubmittingFeedback(false);
+                    }
+                  }}
+                  disabled={isSubmittingFeedback}
                 >
-                  Submit Feedback
+                  {isSubmittingFeedback ? "Submitting..." : "Submit Feedback"}
                 </Button>
                 <Button 
                   size="sm" 
                   variant="outline" 
                   onClick={() => toast.dismiss(id)}
+                  disabled={isSubmittingFeedback}
                 >
                   Cancel
                 </Button>
@@ -99,6 +140,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysisData }) => {
                 size="sm"
                 className="h-8 gap-1"
                 onClick={() => handleFeedback(true)}
+                disabled={isSubmittingFeedback}
               >
                 <ThumbsUp className="h-3.5 w-3.5" />
                 <span className="sr-only sm:not-sr-only sm:inline">Helpful</span>
@@ -108,6 +150,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysisData }) => {
                 size="sm"
                 className="h-8 gap-1"
                 onClick={() => handleFeedback(false)}
+                disabled={isSubmittingFeedback}
               >
                 <ThumbsDown className="h-3.5 w-3.5" />
                 <span className="sr-only sm:not-sr-only sm:inline">Not Helpful</span>
