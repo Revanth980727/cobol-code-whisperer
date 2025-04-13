@@ -37,19 +37,26 @@ export interface AnalysisResult {
 
 export interface FeedbackData {
   file_id: string;
-  rating: number;
+  chunk_id?: string;
+  rating: number; // -1 for negative, 0 for neutral, 1 for positive
   comment?: string;
   corrected_summary?: string;
 }
 
 export interface ModelStatus {
-  status: "ready" | "not_loaded"
+  status: "ready" | "not_loaded";
+  model_info?: {
+    name?: string;
+    type?: string;
+    parameters?: number;
+    loaded_at?: string;
+  };
 }
 
 // Check if the LLM model is loaded and ready
 export const checkModelStatus = async (): Promise<ModelStatus> => {
   try {
-    const response = await fetch(`${API_URL}/model-status`);
+    const response = await fetch(`${API_URL}/api/model-status`);
     
     if (!response.ok) {
       throw new Error("Failed to check model status");
@@ -68,7 +75,7 @@ export const analyzeCobolFile = async (file: File): Promise<AnalysisResult> => {
     const formData = new FormData();
     formData.append("file", file);
 
-    const response = await fetch(`${API_URL}/analyze-code/`, {
+    const response = await fetch(`${API_URL}/api/analyze-code/`, {
       method: "POST",
       body: formData,
     });
@@ -91,7 +98,7 @@ export const analyzeCobolFile = async (file: File): Promise<AnalysisResult> => {
 // Function to submit feedback on analysis
 export const submitFeedback = async (feedback: FeedbackData): Promise<void> => {
   try {
-    const response = await fetch(`${API_URL}/feedback/`, {
+    const response = await fetch(`${API_URL}/api/feedback/`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -116,10 +123,31 @@ export const submitFeedback = async (feedback: FeedbackData): Promise<void> => {
   }
 };
 
+// Function to get all feedback
+export const getAllFeedback = async (): Promise<FeedbackData[]> => {
+  try {
+    const response = await fetch(`${API_URL}/api/feedback/`);
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || "Failed to retrieve feedback");
+    }
+
+    const data = await response.json();
+    return data.feedback;
+  } catch (error) {
+    console.error("Error retrieving feedback:", error);
+    toast.error("Failed to retrieve feedback", {
+      description: error instanceof Error ? error.message : "Unknown error occurred",
+    });
+    throw error;
+  }
+};
+
 // Function to get file content by ID
 export const getFileContent = async (fileId: string): Promise<{ filename: string; content: string; lines: number }> => {
   try {
-    const response = await fetch(`${API_URL}/file/${fileId}`);
+    const response = await fetch(`${API_URL}/api/file/${fileId}`);
 
     if (!response.ok) {
       const errorData = await response.json();
