@@ -64,3 +64,25 @@ class HuggingFaceProvider(BaseModelProvider):
         except Exception as e:
             logger.error(f"Error generating text with HuggingFace: {str(e)}")
             return f"Error generating text: {str(e)}"
+            
+    async def initialize_model(self) -> None:
+        """Initialize the model asynchronously"""
+        # Async initialization will be implemented in the future
+        pass
+        
+    async def generate_text_async(self, prompt: str, max_tokens: int = 2000) -> str:
+        """Generate text asynchronously"""
+        # For now, we'll just call the synchronous method
+        return self.generate_text(prompt, max_tokens)
+        
+    def get_model_info(self) -> dict:
+        """Get information about the loaded model"""
+        if not self.is_model_loaded():
+            return {"status": "not_loaded"}
+            
+        return {
+            "backend": "huggingface",
+            "model_path": self.model_path,
+            "device": str(next(self.model.parameters()).device),
+            "model_type": "Transformers"
+        }
