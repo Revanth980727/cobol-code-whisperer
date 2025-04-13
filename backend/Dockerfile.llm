@@ -1,0 +1,36 @@
+
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Install system dependencies for llama-cpp-python
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy only necessary files for the LLM service
+COPY requirements.txt .
+COPY services/model_providers ./services/model_providers
+COPY docker-entrypoint-llm.sh .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir llama-cpp-python>=0.2.24
+
+# Create models directory
+RUN mkdir -p models
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV PORT=8080
+ENV HOST=0.0.0.0
+
+# Expose the LLM service port
+EXPOSE 8080
+
+# Make entrypoint script executable
+RUN chmod +x /app/docker-entrypoint-llm.sh
+
+# Run the LLM service
+ENTRYPOINT ["/app/docker-entrypoint-llm.sh"]

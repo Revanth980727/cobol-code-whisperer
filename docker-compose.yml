@@ -10,12 +10,11 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
-      - ./models:/app/models
       - ./data:/app/data
     environment:
       - DATABASE_URL=sqlite+aiosqlite:///./data/cobol_whisperer.db
-      - USE_LLAMA_CPP=${USE_LLAMA_CPP:-false}
-      - LLAMA_MODEL_PATH=${LLAMA_MODEL_PATH:-/app/models/llama-3-8b-instruct.gguf}
+      - USE_LLM_SERVICE=true
+      - LLM_SERVICE_URL=http://llm-service:8080
       - DEBUG=true
     restart: unless-stopped
     healthcheck:
@@ -23,6 +22,8 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    depends_on:
+      - llm-service
 
   frontend:
     build:
@@ -33,11 +34,33 @@ services:
     volumes:
       - ./src:/app/src
       - ./public:/app/public
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    restart: unless-stopped
     depends_on:
       - backend
+
+  llm-service:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.llm
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./models:/app/models
     environment:
-      - VITE_API_URL=http://backend:8000
+      - PORT=8080
+      - HOST=0.0.0.0
+      - USE_LLAMA_CPP=true
+      - LLAMA_MODEL_PATH=/app/models/llama-3-8b-instruct.gguf
     restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
 
 volumes:
   data:

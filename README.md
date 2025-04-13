@@ -17,13 +17,13 @@ COBOL Code Whisperer is a web application that uses LLaMA to analyze COBOL code 
 - User feedback collection for continuous improvement
 - Database persistence with SQLite and SQLAlchemy
 - LoRA fine-tuning capabilities
-- Full Docker support
+- Full Docker support with separate services for backend, frontend, and LLM
 
 ## Architecture
 
 - **Frontend**: React + Vite + Tailwind CSS
 - **Backend**: FastAPI + SQLAlchemy + SQLite
-- **AI**: LLaMA 3 with LoRA fine-tuning
+- **AI**: LLaMA 3 with separate containerized service
 
 ## Getting Started
 
@@ -31,6 +31,7 @@ COBOL Code Whisperer is a web application that uses LLaMA to analyze COBOL code 
 
 - Docker and Docker Compose (recommended)
 - Alternatively: Python 3.10+ and Node.js 18+
+- Optional: NVIDIA GPU with CUDA support for accelerated LLM inference
 
 ### Running with Docker (Recommended)
 
@@ -40,68 +41,53 @@ git clone https://github.com/yourusername/cobol-whisperer.git
 cd cobol-whisperer
 ```
 
-2. Start the application:
+2. Download the LLaMA 3 model:
 ```bash
-docker-compose up
+mkdir -p models
+# Download your preferred LLaMA 3 model in GGUF format
+# Example: wget -O models/llama-3-8b-instruct.gguf https://huggingface.co/TheBloke/Llama-3-8B-Instruct-GGUF/resolve/main/llama-3-8b-instruct.Q5_K_M.gguf
 ```
 
-3. Access the web interface at http://localhost:5173
-
-### Manual Setup
-
-#### Backend
-
-1. Set up the backend:
+3. Start all services with a single command:
 ```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
+docker-compose up -d
 ```
 
-2. Run migrations:
-```bash
-alembic upgrade head
-```
+4. Access the web interface at http://localhost:5173
 
-3. Start the backend server:
-```bash
-uvicorn main:app --reload
-```
+### Service Architecture
 
-#### Frontend
+The application is containerized into three separate services:
 
-1. Install dependencies:
-```bash
-npm install
-```
+1. **Frontend (port 5173)**: React application served through Nginx
+2. **Backend (port 8000)**: FastAPI application for code analysis and database operations
+3. **LLM Service (port 8080)**: Dedicated service for LLaMA model inference
 
-2. Start the development server:
-```bash
-npm run dev
-```
+### Using GPU Acceleration
 
-3. Access the web interface at http://localhost:5173
+For GPU acceleration, ensure you have:
+- NVIDIA GPU with up-to-date drivers
+- [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) installed
 
-## Usage
+The docker-compose.yml is configured to use GPU if available.
 
-1. Upload a COBOL file through the web interface
-2. The system will analyze the code and display:
-   - A summary of the code's purpose
-   - Extracted business rules
-   - Code structure visualization
-   - Complexity metrics
-   - Detailed code sections with explanations
-3. You can provide feedback on the analysis to improve future results
+## Configuration Options
 
-## Fine-tuning the Model
+The application can be configured using environment variables:
 
-The application includes a LoRA-based fine-tuning pipeline:
+### Backend Service
+- `DATABASE_URL`: SQLite connection string
+- `USE_LLM_SERVICE`: Set to "true" to use the dedicated LLM service
+- `LLM_SERVICE_URL`: URL of the LLM service
+- `DEBUG`: Enable debug mode
 
-1. Collect user feedback through the application
-2. Prepare training data with the API endpoint
-3. Execute the fine-tuning script
-4. Load the fine-tuned model for improved analysis
+### LLM Service
+- `USE_LLAMA_CPP`: Set to "true" to use llama.cpp (recommended for production)
+- `LLAMA_MODEL_PATH`: Path to the LLaMA model file
+
+## Manual Setup
+
+Refer to the backend and frontend README files for instructions on setting up the application without Docker.
 
 ## Contributing
 
