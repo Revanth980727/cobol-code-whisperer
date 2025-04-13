@@ -41,8 +41,19 @@ def parse_args():
     parser.add_argument("--lora_r", type=int, default=8, help="LoRA attention dimension")
     parser.add_argument("--lora_alpha", type=int, default=16, help="Alpha parameter for LoRA scaling")
     parser.add_argument("--lora_dropout", type=float, default=0.05, help="Dropout for LoRA layers")
-    parser.add_argument("--target_modules", type=str, default="q_proj,v_proj", help="Target modules for LoRA")
+    parser.add_argument("--target_modules", type=str, default="q_proj,v_proj", 
+                        help="Target modules for LoRA (comma-separated)")
     parser.add_argument("--use_8bit", action="store_true", help="Use 8bit precision")
+    parser.add_argument("--eval_steps", type=int, default=100, 
+                        help="Steps between evaluations")
+    parser.add_argument("--save_steps", type=int, default=100, 
+                        help="Steps between checkpoint saves")
+    parser.add_argument("--logging_steps", type=int, default=10, 
+                        help="Steps between logging")
+    parser.add_argument("--warmup_steps", type=int, default=100, 
+                        help="Warmup steps for learning rate scheduler")
+    parser.add_argument("--logging_dir", type=str, default=None, 
+                        help="Directory for tensorboard logs")
     
     return parser.parse_args()
 
@@ -51,11 +62,19 @@ def load_training_data(file_path):
         data = json.load(f)
     
     # Extract prompts and responses for training
+    prompts = []
+    completions = []
+    
+    for example in data:
+        prompts.append(example.get("prompt", ""))
+        completions.append(example.get("completion", ""))
+    
     train_data = {
-        "prompt": [example["prompt"] for example in data],
-        "completion": [example["completion"] for example in data],
+        "prompt": prompts,
+        "completion": completions,
     }
     
+    logger.info(f"Loaded {len(prompts)} training examples")
     return Dataset.from_dict(train_data)
 
 def format_dataset(example, tokenizer, cutoff_len):
@@ -96,12 +115,22 @@ def train():
         logger.info("Using 8-bit quantization")
         model_kwargs["load_in_8bit"] = True
     
-    model = AutoModelForCausalLM.from_pretrained(
-        args.model_name,
-        torch_dtype=torch.float16,
-        device_map="auto",
-        **model_kwargs
-    )
+    # Try different loading strategies
+    try:
+        logger.info("Trying to load model with torch_dtype=float16...")
+        model = AutoModelForCausalLM.from_pretrained(
+            args.model_name,
+            torch_dtype=torch.float16,
+            device_map="auto",
+            **model_kwargs
+        )
+    except Exception as e:
+        logger.warning(f"Failed to load with float16, trying again with defaults: {e}")
+        model = AutoModelForCausalLM.from_pretrained(
+            args.model_name,
+            device_map="auto",
+            **model_kwargs
+        )
     
     # Prepare model for training
     if args.use_8bit:
@@ -120,6 +149,17 @@ def train():
     )
     model = get_peft_model(model, config)
     
+    # Log trainable parameters
+    logger.info("Trainable parameters:")
+    trainable_params = 0
+    all_params = 0
+    for name, param in model.named_parameters():
+        all_params += param.numel()
+        if param.requires_grad:
+            trainable_params += param.numel()
+            logger.info(f"  {name}: {param.numel()}")
+    logger.info(f"Trainable params: {trainable_params} ({trainable_params/all_params:.2%} of all params)")
+    
     # Load and process the dataset
     logger.info(f"Loading training data from {args.train_file}")
     dataset = load_training_data(args.train_file)
@@ -137,9 +177,11 @@ def train():
         )
         train_data = train_val["train"]
         val_data = train_val["test"]
+        logger.info(f"Training on {len(train_data)} examples, validating on {len(val_data)} examples")
     else:
         train_data = tokenized_dataset
         val_data = None
+        logger.info(f"Training on {len(train_data)} examples, no validation set")
     
     # Set up training arguments
     gradient_accumulation_steps = max(1, args.batch_size // args.micro_batch_size)
@@ -152,11 +194,15 @@ def train():
         num_train_epochs=args.num_epochs,
         learning_rate=args.learning_rate,
         fp16=not args.use_8bit,  # If using 8bit, don't use fp16
-        logging_steps=10,
-        evaluation_strategy="epoch" if val_data else "no",
-        save_strategy="epoch",
+        logging_dir=args.logging_dir,
+        logging_steps=args.logging_steps,
+        evaluation_strategy="steps" if val_data else "no",
+        eval_steps=args.eval_steps if val_data else None,
+        save_strategy="steps",
+        save_steps=args.save_steps,
+        warmup_steps=args.warmup_steps,
         load_best_model_at_end=True if val_data else False,
-        report_to="none",  # Disable wandb
+        report_to="tensorboard" if args.logging_dir else "none",
     )
     
     # Create data collator for language modeling
@@ -179,6 +225,29 @@ def train():
     logger.info(f"Saving model to {args.output_dir}")
     model.save_pretrained(args.output_dir)
     tokenizer.save_pretrained(args.output_dir)
+    
+    # Also save the model adapter separately to make merging easier
+    adapter_path = os.path.join(args.output_dir, "adapter")
+    model.save_pretrained(adapter_path, adapter_name="cobol_adapter")
+    
+    # Save training arguments
+    with open(os.path.join(args.output_dir, "training_args.json"), "w") as f:
+        training_args_dict = {
+            "model_name": args.model_name,
+            "lora_r": args.lora_r,
+            "lora_alpha": args.lora_alpha,
+            "lora_dropout": args.lora_dropout,
+            "target_modules": args.target_modules,
+            "num_epochs": args.num_epochs,
+            "learning_rate": args.learning_rate,
+            "batch_size": args.batch_size,
+            "micro_batch_size": args.micro_batch_size,
+            "cutoff_len": args.cutoff_len,
+            "val_set_size": args.val_set_size,
+            "use_8bit": args.use_8bit,
+            "trained_on": len(train_data),
+        }
+        json.dump(training_args_dict, f, indent=2)
     
     logger.info("Training complete!")
 

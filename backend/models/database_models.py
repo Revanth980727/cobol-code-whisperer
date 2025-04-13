@@ -97,8 +97,12 @@ class ModelVersion(Base):
     id = Column(String, primary_key=True, default=generate_uuid)
     model_name = Column(String, nullable=False)
     version = Column(String, nullable=False)
+    path = Column(String, nullable=True)  # Path to model weights
     created_at = Column(DateTime, default=func.now())
     is_active = Column(Boolean, default=False)
+    
+    # Relationships
+    training_jobs = relationship("TrainingJob", back_populates="model_version")
     
     def __repr__(self):
         return f"<ModelVersion {self.model_name} v{self.version}>"
@@ -109,10 +113,15 @@ class TrainingJob(Base):
     
     id = Column(String, primary_key=True, default=generate_uuid)
     feedback_count = Column(Integer, nullable=False)
-    status = Column(String, nullable=False)  # "pending", "in_progress", "completed", "failed"
+    status = Column(String, nullable=False)  # "pending", "ready", "in_progress", "completed", "failed"
+    training_file = Column(String, nullable=True)  # Path to training data file
+    model_version_id = Column(String, ForeignKey("model_versions.id", ondelete="SET NULL"), nullable=True)
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
     error_message = Column(Text, nullable=True)
+    
+    # Relationships
+    model_version = relationship("ModelVersion", back_populates="training_jobs")
     
     def __repr__(self):
         return f"<TrainingJob {self.id} ({self.status})>"
