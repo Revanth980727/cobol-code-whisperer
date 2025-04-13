@@ -1,7 +1,8 @@
 
 import logging
 from typing import Dict, Any, Optional
-from cobol_parser import CobolParser, calculate_complexity
+from parsers.cobol_parser import CobolParser
+from analyzers.complexity_analyzer import calculate_complexity
 from services.file_storage import store_file, get_file
 from services.llm_service import get_llm_service
 
