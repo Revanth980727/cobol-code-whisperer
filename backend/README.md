@@ -1,9 +1,29 @@
 
 # COBOL Code Whisperer Backend
 
-FastAPI backend for the COBOL Code Whisperer application with LLaMA 3 integration.
+FastAPI backend for the COBOL Code Whisperer application with LLaMA integration and SQLite database.
+
+## Features
+
+- COBOL code parsing and analysis
+- LLaMA integration for AI-powered code understanding
+- SQLite + SQLAlchemy for persistent storage
+- Feedback collection and storage
+- LoRA-ready training script for model fine-tuning
+- Docker support for easy deployment
 
 ## Setup
+
+### Option 1: Using Docker (Recommended)
+
+1. Build and start the services:
+```bash
+docker-compose up --build
+```
+
+The API will be available at http://localhost:8000
+
+### Option 2: Manual Setup
 
 1. Create a virtual environment:
 ```bash
@@ -16,15 +36,21 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-3. Setup the LLaMA 3 model:
+3. Run database migrations:
+```bash
+cd backend
+alembic upgrade head
+```
 
-   **Option 1: Using HuggingFace Transformers (default)**
-   
-   The default configuration uses HuggingFace Transformers to load the model. If you have a GPU with enough memory, you can use this option.
-   
-   Note: You need to have access to Meta's LLaMA 3 model on HuggingFace or specify a different model.
+4. Setup the LLaMA model:
 
-   **Option 2: Using llama.cpp (optimized for CPU)**
+   **Option A: Using HuggingFace Transformers (default)**
+   
+   The default configuration uses HuggingFace Transformers to load the model.
+   
+   Note: You need to have access to Meta's LLaMA model on HuggingFace or specify a different model.
+
+   **Option B: Using llama.cpp (optimized for CPU)**
    
    For better CPU performance or limited resources, set the environment variable:
    ```bash
@@ -32,19 +58,63 @@ pip install -r requirements.txt
    export LLAMA_MODEL_PATH=/path/to/your/model.gguf
    ```
    
-   You'll need to download a GGUF version of LLaMA 3 for this option.
+   You'll need to download a GGUF version of LLaMA for this option.
 
-4. Run the server:
+5. Run the server:
 ```bash
 uvicorn main:app --reload
 ```
 
 The API will be available at http://localhost:8000
 
-## Endpoints
+## Database Structure
 
+The application uses SQLAlchemy with SQLite to store:
+
+- Uploaded COBOL files
+- Analysis results and code chunks
+- User feedback
+- Model versions and training jobs
+
+## Feedback for Fine-Tuning
+
+The application collects structured feedback that can be used for fine-tuning:
+
+1. User ratings (positive/negative/neutral)
+2. Text corrections or suggestions
+3. Corrected summaries
+
+## Training Pipeline
+
+1. Prepare training data:
+   ```bash
+   curl -X POST http://localhost:8000/api/training/prepare
+   ```
+
+2. Start a training job:
+   ```bash
+   curl -X POST http://localhost:8000/api/training/start/{job_id}
+   ```
+
+## API Endpoints
+
+### Code Analysis
 - `GET /`: Health check
-- `GET /model-status`: Check if the LLM model is loaded and ready
-- `POST /analyze-code/`: Upload and analyze a COBOL file
-- `POST /feedback/`: Submit feedback on analysis results
-- `GET /file/{file_id}`: Retrieve content of a previously uploaded file
+- `GET /health`: Detailed health check
+- `GET /api/model-status`: Check if the LLM model is loaded and ready
+- `POST /api/analyze-code/`: Upload and analyze a COBOL file
+
+### Feedback
+- `POST /api/feedback/`: Submit feedback on analysis results
+- `GET /api/feedback/`: Get all stored feedback
+- `GET /api/feedback/{feedback_id}`: Get specific feedback by ID
+- `GET /api/feedback/file/{file_id}`: Get all feedback for a file
+
+### File Management
+- `GET /api/file/{file_id}`: Retrieve content of a previously uploaded file
+
+### Training
+- `POST /api/training/prepare`: Prepare training data from feedback
+- `POST /api/training/start/{job_id}`: Start a training job
+- `POST /api/models/version`: Create a new model version
+- `POST /api/models/activate/{model_id}`: Activate a specific model version

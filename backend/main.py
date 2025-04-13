@@ -7,9 +7,10 @@ import asyncio
 import os
 from pathlib import Path
 
-# Import our API routes
+# Import our API routes and database components
 from routes.api import router as api_router
 from services.llm_service import get_llm_service
+from database import engine, Base
 
 # Configure logging
 logging.basicConfig(
@@ -22,6 +23,7 @@ logger = logging.getLogger("cobol-whisperer")
 # Ensure data directories exist
 os.makedirs("data/files", exist_ok=True)
 os.makedirs("data/feedback", exist_ok=True)
+os.makedirs("data/training", exist_ok=True)
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -56,7 +58,7 @@ async def log_requests(request: Request, call_next):
     logger.info(f"Response: {method} {path} - Status: {response.status_code}")
     return response
 
-# Startup event to initialize the LLM
+# Startup event to initialize services
 @app.on_event("startup")
 async def startup_event():
     """Initialize services on startup"""

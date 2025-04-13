@@ -1,17 +1,26 @@
 
 from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Depends
+from fastapi.responses import JSONResponse
+from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, Field, validator
 from typing import Optional, List, Dict, Any, Union
 import uuid
 import logging
 from datetime import datetime
 import asyncio
-from fastapi.responses import JSONResponse
 
 # Import our modules
-from services.cobol_service import analyze_cobol_code, get_file_content
-from services.feedback_service import store_feedback, get_all_feedback, FeedbackModel
+from services.cobol_service import analyze_cobol_code
+from services.db_feedback_service import (
+    store_feedback_db,
+    get_all_feedback_db,
+    get_feedback_by_file_db,
+    get_feedback_db
+)
+from services.db_file_service import store_file_db, get_file_db, file_exists_db
 from services.llm_service import get_llm_service
+from services.training_service import TrainingDataPreparer, create_model_version, activate_model_version
+from database import get_db
 
 # Configure logging
 logger = logging.getLogger("cobol-whisperer-api")
@@ -28,6 +37,7 @@ class FeedbackRequestModel(BaseModel):
     rating: int
     comment: Optional[str] = None
     corrected_summary: Optional[str] = None
+    user_identifier: Optional[str] = None
     
     @validator('rating')
     def rating_must_be_valid(cls, v):
@@ -71,7 +81,8 @@ async def model_status():
 @router.post("/analyze-code/")
 async def analyze_code(
     background_tasks: BackgroundTasks,
-    file: UploadFile = File(...)
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db)
 ):
     """Analyze uploaded COBOL code"""
     try:
@@ -99,6 +110,10 @@ async def analyze_code(
         
         # Analyze the code
         async with llm_lock:
+            # Store the file in the database
+            await store_file_db(db, file_id, file.filename, file_content, len(file_content.splitlines()))
+            
+            # Analyze the code
             analysis_result = analyze_cobol_code(file_id, file.filename, file_content)
         
         return analysis_result
@@ -115,21 +130,19 @@ async def analyze_code(
 
 
 @router.post("/feedback/")
-async def submit_feedback(feedback: FeedbackRequestModel):
+async def submit_feedback(feedback: FeedbackRequestModel, db: AsyncSession = Depends(get_db)):
     """Submit feedback for a specific analysis"""
     try:
-        # Convert to our internal model
-        feedback_model = FeedbackModel(
+        # Store the feedback in the database
+        feedback_id = await store_feedback_db(
+            db,
             file_id=feedback.file_id,
-            chunk_id=feedback.chunk_id,
             rating=feedback.rating,
+            chunk_id=feedback.chunk_id,
             comment=feedback.comment,
             corrected_summary=feedback.corrected_summary,
-            timestamp=datetime.now().isoformat()
+            user_identifier=feedback.user_identifier
         )
-        
-        # Store the feedback
-        feedback_id = store_feedback(feedback_model)
         
         if not feedback_id:
             raise HTTPException(status_code=404, detail="File not found")
@@ -152,10 +165,10 @@ async def submit_feedback(feedback: FeedbackRequestModel):
 
 
 @router.get("/feedback/")
-async def get_feedback():
+async def get_feedback(db: AsyncSession = Depends(get_db)):
     """Get all stored feedback"""
     try:
-        feedback_list = get_all_feedback()
+        feedback_list = await get_all_feedback_db(db)
         return {"feedback": feedback_list, "count": len(feedback_list)}
     except Exception as e:
         logger.error(f"Error retrieving feedback: {str(e)}", exc_info=True)
@@ -165,11 +178,43 @@ async def get_feedback():
         )
 
 
+@router.get("/feedback/{feedback_id}")
+async def get_feedback_by_id(feedback_id: str, db: AsyncSession = Depends(get_db)):
+    """Get specific feedback by ID"""
+    try:
+        feedback = await get_feedback_db(db, feedback_id)
+        if not feedback:
+            raise HTTPException(status_code=404, detail="Feedback not found")
+        return feedback
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error retrieving feedback: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error retrieving feedback: {str(e)}"
+        )
+
+
+@router.get("/feedback/file/{file_id}")
+async def get_feedback_by_file(file_id: str, db: AsyncSession = Depends(get_db)):
+    """Get all feedback for a specific file"""
+    try:
+        feedback_list = await get_feedback_by_file_db(db, file_id)
+        return {"feedback": feedback_list, "count": len(feedback_list)}
+    except Exception as e:
+        logger.error(f"Error retrieving file feedback: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error retrieving file feedback: {str(e)}"
+        )
+
+
 @router.get("/file/{file_id}")
-async def get_file_content_handler(file_id: str):
+async def get_file_content_handler(file_id: str, db: AsyncSession = Depends(get_db)):
     """Get content of a specific file"""
     try:
-        file_data = get_file_content(file_id)
+        file_data = await get_file_db(db, file_id)
         
         if not file_data:
             raise HTTPException(status_code=404, detail="File not found")
@@ -184,6 +229,68 @@ async def get_file_content_handler(file_id: str):
         raise HTTPException(
             status_code=500,
             detail=f"Error retrieving file: {str(e)}"
+        )
+
+
+@router.post("/training/prepare")
+async def prepare_training_data(db: AsyncSession = Depends(get_db)):
+    """Prepare training data from feedback"""
+    try:
+        training_service = TrainingDataPreparer(db)
+        result = await training_service.prepare_training_data()
+        return result
+    except Exception as e:
+        logger.error(f"Error preparing training data: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error preparing training data: {str(e)}"
+        )
+
+
+@router.post("/training/start/{job_id}")
+async def start_training_job(job_id: str, db: AsyncSession = Depends(get_db)):
+    """Start a training job"""
+    try:
+        training_service = TrainingDataPreparer(db)
+        result = await training_service.start_training_job(job_id)
+        return result
+    except Exception as e:
+        logger.error(f"Error starting training job: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error starting training job: {str(e)}"
+        )
+
+
+@router.post("/models/version")
+async def create_new_model_version(
+    model_name: str,
+    version: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """Create a new model version entry"""
+    try:
+        result = await create_model_version(db, model_name, version)
+        return result
+    except Exception as e:
+        logger.error(f"Error creating model version: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error creating model version: {str(e)}"
+        )
+
+
+@router.post("/models/activate/{model_id}")
+async def activate_model(model_id: str, db: AsyncSession = Depends(get_db)):
+    """Activate a specific model version"""
+    try:
+        result = await activate_model_version(db, model_id)
+        return result
+    except Exception as e:
+        logger.error(f"Error activating model: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error activating model: {str(e)}"
         )
 
 
