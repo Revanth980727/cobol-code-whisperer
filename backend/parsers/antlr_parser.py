@@ -1,11 +1,160 @@
 
 import os
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 import importlib.util
+from antlr4 import CommonTokenStream, InputStream, ParseTreeWalker
+from models.cobol_chunk import CobolChunk
+from parsers.chunk_extractor import ChunkExtractor
+from parsers.flow_analyzer import ControlFlowAnalyzer
+from parsers.data_flow_analyzer import DataFlowAnalyzer
 
 # Configure logging
 logger = logging.getLogger("cobol_parser")
+
+class CobolParseTreeListener:
+    """Listener for ANTLR parse tree events"""
+    
+    def __init__(self, parser, code_text):
+        self.parser = parser
+        self.code_text = code_text
+        self.divisions = []
+        self.chunks = []
+        self.current_division = None
+        self.current_section = None
+    
+    def enterIdentificationDivision(self, ctx):
+        self._process_division("IDENTIFICATION DIVISION", ctx)
+    
+    def enterEnvironmentDivision(self, ctx):
+        self._process_division("ENVIRONMENT DIVISION", ctx)
+    
+    def enterDataDivision(self, ctx):
+        self._process_division("DATA DIVISION", ctx)
+    
+    def enterProcedureDivision(self, ctx):
+        self._process_division("PROCEDURE DIVISION", ctx)
+    
+    def enterParagraph(self, ctx):
+        if not ctx.paragraphName() or not ctx.paragraphName().getText():
+            return
+        
+        # Get paragraph name and content
+        para_name = ctx.paragraphName().getText().upper()
+        start_token = ctx.start.start
+        end_token = ctx.stop.stop if ctx.stop else len(self.code_text) - 1
+        
+        # Get the line numbers
+        start_line = ctx.start.line
+        end_line = ctx.stop.line if ctx.stop else start_line + self.code_text[start_token:end_token].count('\n')
+        
+        # Get the paragraph content
+        para_content = self.code_text[start_token:end_token + 1]
+        
+        # Create a chunk for the paragraph
+        paragraph_chunk = CobolChunk(
+            "paragraph",
+            para_name,
+            para_content,
+            start_line,
+            end_line
+        )
+        
+        # Add the paragraph to the chunks list
+        self.chunks.append(paragraph_chunk)
+        
+        # Add the paragraph to the current division
+        if self.current_division is not None:
+            division_idx = next((i for i, d in enumerate(self.divisions) 
+                              if d["division"] == self.current_division), None)
+            if division_idx is not None:
+                if "paragraphs" not in self.divisions[division_idx]:
+                    self.divisions[division_idx]["paragraphs"] = []
+                
+                self.divisions[division_idx]["paragraphs"].append({
+                    "name": para_name,
+                    "line": start_line
+                })
+    
+    def enterSection(self, ctx):
+        if not ctx.sectionName() or not ctx.sectionName().getText():
+            return
+            
+        # Get section name and content
+        section_name = ctx.sectionName().getText().upper()
+        start_token = ctx.start.start
+        end_token = ctx.stop.stop if ctx.stop else len(self.code_text) - 1
+        
+        # Get the line numbers
+        start_line = ctx.start.line
+        end_line = ctx.stop.line if ctx.stop else start_line + self.code_text[start_token:end_token].count('\n')
+        
+        # Get the section content
+        section_content = self.code_text[start_token:end_token + 1]
+        
+        # Create a chunk for the section
+        section_chunk = CobolChunk(
+            "section",
+            section_name,
+            section_content,
+            start_line,
+            end_line
+        )
+        
+        # Add the section to the chunks list
+        self.chunks.append(section_chunk)
+        
+        # Set the current section
+        self.current_section = section_name
+        
+        # Add the section to the current division
+        if self.current_division is not None:
+            division_idx = next((i for i, d in enumerate(self.divisions) 
+                              if d["division"] == self.current_division), None)
+            if division_idx is not None:
+                if "sections" not in self.divisions[division_idx]:
+                    self.divisions[division_idx]["sections"] = []
+                
+                self.divisions[division_idx]["sections"].append({
+                    "name": section_name,
+                    "line": start_line
+                })
+    
+    def _process_division(self, division_name, ctx):
+        """Process a division node"""
+        # Get the start and end positions for the division
+        start_token = ctx.start.start
+        end_token = ctx.stop.stop if ctx.stop else len(self.code_text) - 1
+        
+        # Get the line numbers
+        start_line = ctx.start.line
+        end_line = ctx.stop.line if ctx.stop else start_line + self.code_text[start_token:end_token].count('\n')
+        
+        # Get the division content
+        division_text = self.code_text[start_token:end_token + 1]
+        
+        # Create a chunk for the division
+        division_chunk = CobolChunk(
+            "division",
+            division_name,
+            division_text,
+            start_line,
+            end_line
+        )
+        
+        # Add the division to the chunks list
+        self.chunks.append(division_chunk)
+        
+        # Add the division to the divisions list
+        self.divisions.append({
+            "division": division_name,
+            "line": start_line,
+            "elements": []
+        })
+        
+        # Set the current division
+        self.current_division = division_name
+
 
 class AntlrCobolParser:
     """COBOL parser using ANTLR4 generated parser"""
@@ -17,6 +166,7 @@ class AntlrCobolParser:
             # Check if the generated ANTLR files exist
             lexer_path = os.path.join(os.path.dirname(__file__), 'antlr_generated', 'Cobol85Lexer.py')
             parser_path = os.path.join(os.path.dirname(__file__), 'antlr_generated', 'Cobol85Parser.py')
+            listener_path = os.path.join(os.path.dirname(__file__), 'antlr_generated', 'Cobol85Listener.py')
             
             if not os.path.exists(lexer_path) or not os.path.exists(parser_path):
                 logger.warning("ANTLR generated files not found. Using fallback parser.")
@@ -50,8 +200,11 @@ class AntlrCobolParser:
                 # First, try to import using the standard import mechanism
                 from .antlr_generated.Cobol85Lexer import Cobol85Lexer
                 from .antlr_generated.Cobol85Parser import Cobol85Parser
+                from .antlr_generated.Cobol85Listener import Cobol85Listener
+                
                 self.Cobol85Lexer = Cobol85Lexer
                 self.Cobol85Parser = Cobol85Parser
+                self.Cobol85Listener = Cobol85Listener
                 logger.info("ANTLR parser loaded successfully")
                 return True
             except ImportError:
@@ -62,6 +215,7 @@ class AntlrCobolParser:
                 base_dir = os.path.dirname(__file__)
                 lexer_path = os.path.join(base_dir, 'antlr_generated', 'Cobol85Lexer.py')
                 parser_path = os.path.join(base_dir, 'antlr_generated', 'Cobol85Parser.py')
+                listener_path = os.path.join(base_dir, 'antlr_generated', 'Cobol85Listener.py')
                 
                 if not os.path.exists(lexer_path) or not os.path.exists(parser_path):
                     logger.warning("ANTLR generated files not found")
@@ -79,6 +233,12 @@ class AntlrCobolParser:
                 spec.loader.exec_module(parser_module)
                 self.Cobol85Parser = parser_module.Cobol85Parser
                 
+                # Load the listener module
+                spec = importlib.util.spec_from_file_location("Cobol85Listener", listener_path)
+                listener_module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(listener_module)
+                self.Cobol85Listener = listener_module.Cobol85Listener
+                
                 logger.info("ANTLR parser loaded successfully (dynamic import)")
                 return True
                 
@@ -94,7 +254,6 @@ class AntlrCobolParser:
             
         try:
             import antlr4
-            from models.cobol_chunk import CobolChunk
             
             # Create the lexer and parser
             input_stream = antlr4.InputStream(code)
@@ -102,45 +261,55 @@ class AntlrCobolParser:
             tokens = antlr4.CommonTokenStream(lexer)
             parser = self.Cobol85Parser(tokens)
             
-            # Parse the code
-            parse_tree = parser.startRule()  # Adjust the start rule based on the grammar
+            # Error handling
+            parser.removeErrorListeners()
+            # You could add a custom error listener here
             
-            # Extract divisions, sections, and paragraphs using a visitor or listener
-            # This requires extending antlr4.ParseTreeVisitor or antlr4.ParseTreeListener
-            # For now, we'll use a simple approach to extract divisions
+            # Parse the code - Use startRule() method or direct access to parsing rule
+            try:
+                # First try with the expected startRule method
+                parse_tree = parser.startRule()
+            except AttributeError:
+                # If startRule doesn't exist, try with the compilationUnit rule
+                # which is the common entry point for many ANTLR grammars
+                try:
+                    parse_tree = parser.compilationUnit()
+                except AttributeError:
+                    # If that fails, try with cobolSource which is specific to COBOL
+                    try:
+                        parse_tree = parser.cobolSource()
+                    except AttributeError:
+                        # Final fallback - try checking what the parser's methods are
+                        method_names = [method for method in dir(parser) 
+                                    if callable(getattr(parser, method)) and 
+                                    not method.startswith('_')]
+                        logger.info(f"Available parser methods: {method_names}")
+                        
+                        # Try common rule names for COBOL
+                        for rule in ['program', 'programUnit', 'cobol', 'source']:
+                            if rule in method_names:
+                                parse_tree = getattr(parser, rule)()
+                                break
+                        else:
+                            raise ValueError("Could not find an appropriate start rule for parsing")
             
-            self.divisions = []
-            self.chunks = []
+            # Create a custom listener to process the parse tree
+            listener = CobolParseTreeListener(parser, code)
             
-            # Extract IDENTIFICATION DIVISION
-            if hasattr(parse_tree, 'identificationDivision'):
-                id_div = parse_tree.identificationDivision()
-                if id_div:
-                    self._extract_division("IDENTIFICATION DIVISION", id_div, code)
+            # Walk the tree with our listener
+            walker = antlr4.ParseTreeWalker()
+            walker.walk(listener, parse_tree)
             
-            # Extract ENVIRONMENT DIVISION
-            if hasattr(parse_tree, 'environmentDivision'):
-                env_div = parse_tree.environmentDivision()
-                if env_div:
-                    self._extract_division("ENVIRONMENT DIVISION", env_div, code)
+            # Get the extracted divisions and chunks
+            self.divisions = listener.divisions
+            self.chunks = listener.chunks
             
-            # Extract DATA DIVISION
-            if hasattr(parse_tree, 'dataDivision'):
-                data_div = parse_tree.dataDivision()
-                if data_div:
-                    self._extract_division("DATA DIVISION", data_div, code)
-            
-            # Extract PROCEDURE DIVISION
-            if hasattr(parse_tree, 'procedureDivision'):
-                proc_div = parse_tree.procedureDivision()
-                if proc_div:
-                    self._extract_division("PROCEDURE DIVISION", proc_div, code)
-                    self._extract_sections_and_paragraphs(proc_div, code)
+            # If no chunks were extracted, use the fallback method
+            if not self.chunks:
+                logger.warning("No chunks extracted by ANTLR parser, using fallback extraction")
+                self.divisions, self.chunks = self._fallback_extract_chunks(code)
             
             # Build call graph and data flow
-            from parsers.flow_analyzer import ControlFlowAnalyzer
-            from parsers.data_flow_analyzer import DataFlowAnalyzer
-            
             call_graph = ControlFlowAnalyzer.build_call_graph(self.chunks)
             data_flow = DataFlowAnalyzer.analyze_data_flow(self.chunks)
             
@@ -155,62 +324,58 @@ class AntlrCobolParser:
             logger.error(f"ANTLR parsing error: {str(e)}")
             return None
     
-    def _extract_division(self, division_name, division_ctx, code):
-        """Extract a division from the parse tree"""
-        # Get the start and end positions for the division
-        start_token = division_ctx.start.start
-        end_token = division_ctx.stop.stop
-        
-        # Get the line numbers
-        start_line = division_ctx.start.line
-        end_line = division_ctx.stop.line
-        
-        # Get the text for the division
-        division_text = code[start_token:end_token + 1]
-        
-        # Create a chunk for the division
-        from models.cobol_chunk import CobolChunk
-        division_chunk = CobolChunk(
-            "division",
-            division_name,
-            division_text,
-            start_line,
-            end_line
-        )
-        
-        # Add the division to the list
-        self.chunks.append(division_chunk)
-        
-        # Add the division to the divisions list
-        self.divisions.append({
-            "division": division_name,
-            "line": start_line,
-            "elements": []
-        })
-    
-    def _extract_sections_and_paragraphs(self, procedure_div_ctx, code):
-        """Extract sections and paragraphs from the procedure division"""
-        # This would require a more detailed visitor or listener implementation
-        # For now, we'll use a placeholder implementation
-        
-        # In a complete implementation, we would:
-        # 1. Iterate through the sections in the procedure division
-        # 2. For each section, extract its name and content
-        # 3. For each section, iterate through its paragraphs
-        # 4. For each paragraph, extract its name and content
-        
-        # Placeholder implementation - use regex-based extraction as fallback
+    def _fallback_extract_chunks(self, code):
+        """Fallback method to extract chunks from code if ANTLR parsing fails"""
         from parsers.chunk_extractor import ChunkExtractor
         
-        # Find the index of the procedure division in the chunks list
-        procedure_div_index = -1
-        for i, chunk in enumerate(self.chunks):
-            if chunk.chunk_type == "division" and "PROCEDURE DIVISION" in chunk.name:
-                procedure_div_index = i
-                break
+        # Split the code into lines
+        lines = code.split('\n')
         
-        if procedure_div_index >= 0:
-            # Extract sections and paragraphs using the ChunkExtractor
-            # Note: This is a fallback method when detailed ANTLR extraction is not implemented
-            self.divisions, self.chunks = ChunkExtractor.extract_sections_and_paragraphs(
-                self.divisions, self.chunks, code.split('\n'))
+        # Create empty divisions and chunks
+        divisions = []
+        chunks = []
+        
+        # Extract divisions using regex
+        import re
+        division_patterns = {
+            "IDENTIFICATION DIVISION": r"^\s*IDENTIFICATION\s+DIVISION\s*\.",
+            "ENVIRONMENT DIVISION": r"^\s*ENVIRONMENT\s+DIVISION\s*\.",
+            "DATA DIVISION": r"^\s*DATA\s+DIVISION\s*\.",
+            "PROCEDURE DIVISION": r"^\s*PROCEDURE\s+DIVISION\s*\."
+        }
+        
+        division_locations = {}
+        
+        # Find the divisions
+        for div_name, pattern in division_patterns.items():
+            for i, line in enumerate(lines):
+                if re.search(pattern, line, re.IGNORECASE):
+                    division_locations[div_name] = i
+                    divisions.append({
+                        "division": div_name,
+                        "line": i + 1,
+                        "elements": []
+                    })
+                    break
+        
+        # Extract content for each division
+        sorted_divs = sorted(division_locations.items(), key=lambda x: x[1])
+        for i, (div_name, start_line) in enumerate(sorted_divs):
+            end_line = len(lines) - 1
+            if i < len(sorted_divs) - 1:
+                end_line = sorted_divs[i+1][1] - 1
+            
+            division_content = '\n'.join(lines[start_line:end_line+1])
+            chunks.append(CobolChunk(
+                "division", 
+                div_name, 
+                division_content, 
+                start_line + 1, 
+                end_line + 1
+            ))
+        
+        # Use the ChunkExtractor to extract sections and paragraphs
+        divisions, chunks = ChunkExtractor.extract_sections_and_paragraphs(
+            divisions, chunks, lines)
+        
+        return divisions, chunks

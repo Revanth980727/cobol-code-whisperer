@@ -33,9 +33,14 @@ class TestAntlrParser(unittest.TestCase):
         """Test if the ANTLR parser is available"""
         is_available = AntlrCobolParser.is_available()
         
-        # If ANTLR parser is not available, skip the test
+        # If ANTLR parser is not available, skip the test but log a warning
         if not is_available:
-            self.skipTest("ANTLR parser is not available")
+            self.skipTest("ANTLR parser is not available - make sure to generate parser files")
+            
+    def test_parser_initialization(self):
+        """Test initialization of the parser"""
+        parser = AntlrCobolParser()
+        self.assertIsNotNone(parser)
     
     def test_antlr_parsing(self):
         """Test ANTLR parsing of a simple COBOL program"""
@@ -48,7 +53,7 @@ class TestAntlrParser(unittest.TestCase):
         
         # If parsing failed, skip the test
         if not result:
-            self.skipTest("ANTLR parsing failed")
+            self.skipTest("ANTLR parsing failed - check parser configuration")
         
         # Basic checks on the result
         self.assertIn("divisions", result)
@@ -70,19 +75,21 @@ class TestAntlrParser(unittest.TestCase):
         self.assertIn("DATA DIVISION", chunk_names)
         self.assertIn("PROCEDURE DIVISION", chunk_names)
         
-        # If paragraphs are extracted correctly, check them
-        if "MAIN-PARAGRAPH" in chunk_names:
-            self.assertIn("MAIN-PARAGRAPH", chunk_names)
-            self.assertIn("SECOND-PARA", chunk_names)
+        # Check paragraphs
+        self.assertIn("MAIN-PARAGRAPH", chunk_names)
+        self.assertIn("SECOND-PARA", chunk_names)
         
-        # If call graph is extracted correctly, check it
+        # Check call graph
         call_graph = result["call_graph"]
         if "MAIN-PARAGRAPH" in call_graph:
             self.assertIn("SECOND-PARA", call_graph["MAIN-PARAGRAPH"])
         
-        # If data flow is extracted correctly, check it
+        # Check data flow
         data_flow = result["data_flow"]
         if "MAIN-PARAGRAPH" in data_flow:
             variables_written = [usage["variable"] for usage in data_flow["MAIN-PARAGRAPH"] 
                                 if usage["operation"] == "write"]
             self.assertIn("COUNTER", variables_written)
+
+if __name__ == "__main__":
+    unittest.main()
