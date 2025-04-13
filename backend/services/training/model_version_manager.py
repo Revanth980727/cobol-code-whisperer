@@ -9,13 +9,16 @@ from backend.models.database_models import ModelVersion
 
 logger = logging.getLogger("model-version-manager")
 
-async def create_model_version(db: AsyncSession, model_name: str, version: str, path: str = None) -> Dict[str, Any]:
-    """Create a new model version entry."""
+async def create_model_version(db: AsyncSession, model_name: str, version: str, path: str = None, 
+                               tags: List[str] = None, metrics: Dict[str, float] = None) -> Dict[str, Any]:
+    """Create a new model version entry with tags and metrics."""
     model = ModelVersion(
         model_name=model_name,
         version=version,
         path=path,
-        is_active=False
+        is_active=False,
+        tags=tags or [],
+        metrics=metrics or {}
     )
     db.add(model)
     await db.commit()
@@ -26,6 +29,8 @@ async def create_model_version(db: AsyncSession, model_name: str, version: str, 
         "model_name": model.model_name,
         "version": model.version,
         "path": model.path,
+        "tags": model.tags,
+        "metrics": model.metrics,
         "created_at": model.created_at.isoformat() if model.created_at else None,
         "is_active": model.is_active
     }
@@ -59,6 +64,8 @@ async def activate_model_version(db: AsyncSession, model_id: str) -> Dict[str, A
             "model_name": model.model_name,
             "version": model.version,
             "path": model.path,
+            "tags": model.tags,
+            "metrics": model.metrics,
             "is_active": model.is_active
         }
     }
@@ -75,6 +82,8 @@ async def list_model_versions(db: AsyncSession) -> List[Dict[str, Any]]:
         "model_name": model.model_name,
         "version": model.version,
         "path": model.path,
+        "tags": model.tags,
+        "metrics": model.metrics,
         "created_at": model.created_at.isoformat() if model.created_at else None,
         "is_active": model.is_active
     } for model in models]

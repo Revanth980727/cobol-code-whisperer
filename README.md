@@ -9,14 +9,19 @@ COBOL Code Whisperer is a web application that uses LLaMA to analyze COBOL code 
 
 ## Features
 
-- COBOL code parsing and analysis
+- COBOL code parsing and analysis with dialect detection
+- Advanced control flow analysis (GO TO, PERFORM THRU, ALTER statements)
+- COPY/REPLACE statement preprocessing
 - AI-powered documentation generation
 - Visual code structure diagrams
 - Complexity metrics and analysis
 - Business rule extraction
 - User feedback collection for continuous improvement
 - Database persistence with SQLite and SQLAlchemy
-- LoRA fine-tuning capabilities
+- LoRA fine-tuning capabilities with:
+  - Configurable hyperparameters 
+  - Holdout validation
+  - Model versioning and tracking
 - Full Docker support with separate services for backend, frontend, and LLM
 
 ## Architecture
@@ -84,10 +89,46 @@ The application can be configured using environment variables:
 ### LLM Service
 - `USE_LLAMA_CPP`: Set to "true" to use llama.cpp (recommended for production)
 - `LLAMA_MODEL_PATH`: Path to the LLaMA model file
+- `MODEL_DOWNLOAD_URL`: Optional URL to download a model automatically
+- `DEFAULT_HF_MODEL`: Default HuggingFace model to use if no GGUF model is found
 
-## Manual Setup
+## Fine-tuning the LLM Model
 
-Refer to the backend and frontend README files for instructions on setting up the application without Docker.
+The system includes a complete pipeline for fine-tuning the LLaMA model with user feedback:
+
+1. Collect feedback through the UI
+2. Prepare training data:
+```bash
+curl -X POST http://localhost:8000/api/training/prepare
+```
+
+3. Start a training job (this will use LoRA fine-tuning):
+```bash
+curl -X POST http://localhost:8000/api/training/start/{job_id}
+```
+
+4. Create and activate a new model version:
+```bash
+curl -X POST "http://localhost:8000/api/models/version?model_name=llama-3-custom&version=v1"
+curl -X POST http://localhost:8000/api/models/activate/{model_id}
+```
+
+5. The fine-tuned model will be evaluated on a holdout validation set for quality regression testing
+
+### Fine-tuning Configuration
+
+You can customize the LoRA fine-tuning process by editing the configuration file at `backend/lora/config.py` or by providing a custom configuration when starting a training job.
+
+## COBOL Parsing Features
+
+The system supports advanced COBOL parsing features:
+
+- Detection of various COBOL dialects (IBM, Micro Focus, ACUCOBOL, GNU)
+- Analysis of complex control flow (GO TO, ALTER, nested IF statements)
+- PERFORM THRU resolution and flow analysis
+- COPY statement preprocessing
+- REPLACE statement handling
+- Fallback parsing for problematic code
 
 ## Contributing
 
