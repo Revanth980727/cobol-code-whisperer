@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -131,7 +132,7 @@ const Upload = () => {
                     LLaMA 3 model loaded and ready
                   </div>
                 ) : (
-                  <Alert variant="warning" className="mt-2">
+                  <Alert variant="destructive" className="mt-2">
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle>LLaMA 3 model not loaded</AlertTitle>
                     <AlertDescription>
