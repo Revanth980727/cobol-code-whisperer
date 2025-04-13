@@ -108,7 +108,10 @@ const Upload = () => {
       summary: data.summary,
       businessRules: data.business_rules,
       codeStructure: data.code_structure,
-      complexity: data.complexity
+      complexity: data.complexity,
+      callGraph: data.call_graph,
+      dataFlow: data.data_flow,
+      chunks: data.chunks
     };
   };
 

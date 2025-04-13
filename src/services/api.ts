@@ -18,7 +18,21 @@ export interface AnalysisResult {
     cyclomatic: number;
     linesOfCode: number;
     commentPercentage: number;
+    dataItems?: number;
+    paragraphs?: number;
+    ifStatements?: number;
+    performStatements?: number;
   };
+  call_graph?: Record<string, string[]>;
+  data_flow?: Record<string, Array<{variable: string, operation: string}>>;
+  chunks?: Array<{
+    type: string;
+    name: string;
+    content: string;
+    start_line: number;
+    end_line: number;
+    line_count: number;
+  }>;
 }
 
 export interface FeedbackData {

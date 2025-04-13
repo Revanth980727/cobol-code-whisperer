@@ -8,3 +8,6 @@ transformers==4.38.2
 torch==2.1.2
 sentencepiece==0.1.99
 tqdm==4.66.1
+antlr4-python3-runtime==4.11.1
+pygraphviz==1.10
+networkx==3.1
