@@ -22,6 +22,9 @@ class CobolParseTreeListener:
         self.chunks = []
         self.current_division = None
         self.current_section = None
+        self.variable_definitions = {}
+        self.call_graph = {}
+        self.data_flow = {}
     
     def enterIdentificationDivision(self, ctx):
         self._process_division("IDENTIFICATION DIVISION", ctx)
@@ -75,6 +78,12 @@ class CobolParseTreeListener:
                     "name": para_name,
                     "line": start_line
                 })
+        
+        # Track perform statements for call graph
+        self._extract_perform_statements(para_content, para_name)
+        
+        # Track data operations for data flow
+        self._extract_data_operations(para_content, para_name)
     
     def enterSection(self, ctx):
         if not ctx.sectionName() or not ctx.sectionName().getText():
@@ -120,6 +129,24 @@ class CobolParseTreeListener:
                     "line": start_line
                 })
     
+    def enterDataItem(self, ctx):
+        """Process data items for working-storage and linkage sections"""
+        try:
+            # This method will depend on the ANTLR grammar's structure
+            # for data item definition nodes
+            if hasattr(ctx, 'dataName') and ctx.dataName():
+                data_name = ctx.dataName().getText().upper()
+                level_number = ctx.levelNumber().getText() if hasattr(ctx, 'levelNumber') else "01"
+                
+                # Store variable definition
+                self.variable_definitions[data_name] = {
+                    "level": level_number,
+                    "section": self.current_section,
+                    "division": self.current_division
+                }
+        except Exception as e:
+            logger.debug(f"Error processing data item: {e}")
+    
     def _process_division(self, division_name, ctx):
         """Process a division node"""
         # Get the start and end positions for the division
@@ -154,6 +181,50 @@ class CobolParseTreeListener:
         
         # Set the current division
         self.current_division = division_name
+    
+    def _extract_perform_statements(self, content, paragraph_name):
+        """Extract PERFORM statements to build call graph"""
+        import re
+        perform_pattern = r'\bPERFORM\s+([A-Z0-9-]+)'
+        
+        for match in re.finditer(perform_pattern, content, re.IGNORECASE):
+            target_para = match.group(1).upper()
+            
+            if paragraph_name not in self.call_graph:
+                self.call_graph[paragraph_name] = []
+                
+            if target_para not in self.call_graph[paragraph_name]:
+                self.call_graph[paragraph_name].append(target_para)
+    
+    def _extract_data_operations(self, content, paragraph_name):
+        """Extract data operations for data flow analysis"""
+        import re
+        
+        # Track variable reads
+        read_pattern = r'\b(?:USING|IF|WHEN|UNTIL|VARYING)\s+([A-Z0-9-]+)'
+        # Track variable writes
+        write_pattern = r'\b(?:MOVE|COMPUTE|SET|ADD|SUBTRACT|MULTIPLY|DIVIDE)(?:\s+.+\s+TO\s+|\s+.+\s+GIVING\s+)([A-Z0-9-]+)'
+        
+        if paragraph_name not in self.data_flow:
+            self.data_flow[paragraph_name] = []
+        
+        # Process reads
+        for match in re.finditer(read_pattern, content, re.IGNORECASE):
+            variable = match.group(1).upper()
+            if variable in self.variable_definitions:
+                self.data_flow[paragraph_name].append({
+                    "variable": variable,
+                    "operation": "read"
+                })
+        
+        # Process writes
+        for match in re.finditer(write_pattern, content, re.IGNORECASE):
+            variable = match.group(1).upper()
+            if variable in self.variable_definitions:
+                self.data_flow[paragraph_name].append({
+                    "variable": variable,
+                    "operation": "write"
+                })
 
 
 class AntlrCobolParser:
@@ -293,6 +364,8 @@ class AntlrCobolParser:
                         else:
                             raise ValueError("Could not find an appropriate start rule for parsing")
             
+            logger.info("ANTLR parsing successful, building parse tree")
+            
             # Create a custom listener to process the parse tree
             listener = CobolParseTreeListener(parser, code)
             
@@ -310,8 +383,10 @@ class AntlrCobolParser:
                 self.divisions, self.chunks = self._fallback_extract_chunks(code)
             
             # Build call graph and data flow
-            call_graph = ControlFlowAnalyzer.build_call_graph(self.chunks)
-            data_flow = DataFlowAnalyzer.analyze_data_flow(self.chunks)
+            call_graph = listener.call_graph or ControlFlowAnalyzer.build_call_graph(self.chunks)
+            data_flow = listener.data_flow or DataFlowAnalyzer.analyze_data_flow(self.chunks)
+            
+            logger.info(f"ANTLR parser extracted {len(self.chunks)} chunks")
             
             return {
                 "divisions": self.divisions,
@@ -379,3 +454,4 @@ class AntlrCobolParser:
             divisions, chunks, lines)
         
         return divisions, chunks
+

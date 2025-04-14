@@ -1,5 +1,6 @@
 
 import logging
+import os
 from typing import Dict, Any, Optional
 from parsers.cobol_parser import CobolParser
 from analyzers.complexity_analyzer import calculate_complexity
@@ -8,6 +9,9 @@ from services.llm_service import get_llm_service
 
 # Configure logging
 logger = logging.getLogger("cobol-service")
+
+# Check if we should use ANTLR parser from environment variable
+USE_ANTLR = os.environ.get("USE_ANTLR", "true").lower() in ("true", "1", "yes", "y")
 
 def analyze_cobol_code(file_id: str, filename: str, file_content: bytes) -> Dict[str, Any]:
     """Analyze COBOL code and return the analysis results."""
@@ -27,7 +31,13 @@ def analyze_cobol_code(file_id: str, filename: str, file_content: bytes) -> Dict
     
     # Parse code into chunks for analysis
     parser = CobolParser(code)
-    parsed_data = parser.parse()
+    
+    # Log whether ANTLR is available
+    logger.info(f"ANTLR parser available: {parser.antlr_parser_available}")
+    logger.info(f"Using ANTLR parser: {USE_ANTLR}")
+    
+    # Parse with appropriate parser
+    parsed_data = parser.parse_code(code, use_fallback=True, use_antlr=USE_ANTLR)
     
     # Calculate complexity metrics
     complexity = calculate_complexity(code)
@@ -44,7 +54,8 @@ def analyze_cobol_code(file_id: str, filename: str, file_content: bytes) -> Dict
         "complexity": complexity,
         "call_graph": parsed_data["call_graph"],
         "data_flow": parsed_data["data_flow"],
-        "chunks": [chunk for chunk in parsed_data["chunks"] if chunk["type"] != "division"][:10]  # Return non-division chunks, limited to 10
+        "chunks": [chunk for chunk in parsed_data["chunks"] if chunk["type"] != "division"][:10],  # Return non-division chunks, limited to 10
+        "parser_used": "ANTLR" if (USE_ANTLR and parser.antlr_parser_available) else "Standard"
     }
     
     return analysis_result
@@ -75,7 +86,7 @@ def analyze_with_llm(code: str, structured_parsing: bool = True) -> dict:
         # Otherwise, proceed with detailed chunk analysis
         # Parse the code into chunks for detailed analysis
         parser = CobolParser(code)
-        parsed_data = parser.parse()
+        parsed_data = parser.parse_code(code, use_antlr=USE_ANTLR)
         chunks = parsed_data["chunks"]
         
         # Select important chunks to analyze (to avoid too many API calls)

@@ -20,6 +20,7 @@ class CobolParser(BaseCobolParser):
     def __init__(self, code=None):
         super().__init__(code) if code else super().__init__()
         self.dialects = DialectDetector.get_dialect_patterns()
+        self.preprocessor = CobolPreprocessor()
         
         # For tracking copy statements
         self.copy_modules = {}
@@ -27,19 +28,20 @@ class CobolParser(BaseCobolParser):
         self.control_flow_graph = {}
         # Check if ANTLR parser is available
         self.antlr_parser_available = AntlrCobolParser.is_available()
+        logger.info(f"ANTLR parser available: {self.antlr_parser_available}")
     
-    def parse_code(self, code, use_fallback=False):
+    def parse_code(self, code, use_fallback=False, use_antlr=True):
         """Parse COBOL code with ANTLR and fallback mechanisms"""
         try:
             # Preprocess COPY and REPLACE statements first
-            preprocessed_code = self.preprocess_code(code)
+            preprocessed_code = self.preprocessor.preprocess_code(code)
             
             # Detect dialect for adaptive parsing
             dialect = self.detect_dialect(preprocessed_code)
             logger.info(f"Detected COBOL dialect: {dialect}")
             
-            # Try ANTLR parser first if available
-            if self.antlr_parser_available:
+            # Try ANTLR parser first if available and enabled
+            if use_antlr and self.antlr_parser_available:
                 logger.info("Attempting to parse with ANTLR parser")
                 try:
                     antlr_parser = AntlrCobolParser()
@@ -49,6 +51,8 @@ class CobolParser(BaseCobolParser):
                         result["dialect"] = dialect
                         result["control_flow"] = self.analyze_control_flow(preprocessed_code)
                         return result
+                    else:
+                        logger.warning("ANTLR parser returned None result. Falling back to standard parser.")
                 except Exception as e:
                     logger.warning(f"ANTLR parser failed: {str(e)}. Falling back to standard parser.")
             
@@ -73,6 +77,22 @@ class CobolParser(BaseCobolParser):
             else:
                 logger.error(f"Parser error: {str(e)}")
                 raise
+    
+    def detect_dialect(self, code):
+        """Detect COBOL dialect based on syntax patterns"""
+        return DialectDetector.detect_dialect(code)
+    
+    def preprocess_code(self, code):
+        """Preprocess COBOL code to handle COPY and REPLACE statements"""
+        return self.preprocessor.preprocess_code(code)
+    
+    def fallback_parse(self, code):
+        """Simple fallback parser for when the main parser fails"""
+        return FallbackParser.parse(code)
+    
+    def analyze_control_flow(self, code):
+        """Build a control flow graph from the code"""
+        return ControlFlowAnalyzer.analyze_control_flow(code)
     
     def contains_verb(self, code, verb):
         """Check if code contains a specific COBOL verb"""

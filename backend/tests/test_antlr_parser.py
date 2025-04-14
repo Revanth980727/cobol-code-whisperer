@@ -90,6 +90,25 @@ class TestAntlrParser(unittest.TestCase):
             variables_written = [usage["variable"] for usage in data_flow["MAIN-PARAGRAPH"] 
                                 if usage["operation"] == "write"]
             self.assertIn("COUNTER", variables_written)
+            
+    def test_fallback_extraction(self):
+        """Test the fallback extraction method"""
+        # If ANTLR parser is not available, skip the test
+        if not AntlrCobolParser.is_available():
+            self.skipTest("ANTLR parser is not available")
+            
+        parser = AntlrCobolParser()
+        divisions, chunks = parser._fallback_extract_chunks(self.test_code)
+        
+        # Check that fallback extraction works
+        self.assertGreater(len(divisions), 0)
+        self.assertGreater(len(chunks), 0)
+        
+        # Check division names
+        division_names = [div["division"] for div in divisions]
+        self.assertIn("IDENTIFICATION DIVISION", division_names)
+        self.assertIn("DATA DIVISION", division_names)
+        self.assertIn("PROCEDURE DIVISION", division_names)
 
 if __name__ == "__main__":
     unittest.main()
