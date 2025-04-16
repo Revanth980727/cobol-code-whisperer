@@ -6,7 +6,7 @@ import logging
 from typing import Optional, Dict, List, Any
 import json
 
-from backend.models.database_models import UploadedFile, AnalysisResult, CodeChunk, Feedback
+from models.database_models import UploadedFile, AnalysisResult, CodeChunk, Feedback
 
 logger = logging.getLogger("db-file-service")
 

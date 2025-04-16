@@ -1,11 +1,8 @@
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
+"""API routes for model operations"""
+from fastapi import APIRouter, HTTPException
 import logging
-
-# Import our modules
 from services.llm_service import get_llm_service
-from database import get_db
 
 # Configure logging
 logger = logging.getLogger("api-model-routes")
@@ -14,22 +11,26 @@ logger = logging.getLogger("api-model-routes")
 router = APIRouter(tags=["model-api"])
 
 @router.get("/model-status")
-async def model_status():
-    """Check if the LLM model is loaded and ready."""
-    try:
-        llm_service = get_llm_service()
-        is_ready = llm_service.is_ready()
-        
-        # Include model information if available
-        model_info = llm_service.model_provider.get_model_info() if is_ready else {}
-        
+async def get_model_status():
+    """Get status of the LLM model"""
+    llm_service = get_llm_service()
+    
+    # Check if model is loaded
+    is_ready = llm_service.is_ready()
+    
+    if is_ready:
+        # Get model info if available
+        model_info = {}
+        try:
+            model_info = llm_service.model_provider.get_model_info()
+        except Exception as e:
+            logger.warning(f"Could not get model info: {str(e)}")
+            
         return {
-            "status": "ready" if is_ready else "not_loaded",
+            "status": "ready",
             "model_info": model_info
         }
-    except Exception as e:
-        logger.error(f"Error checking model status: {str(e)}")
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Error checking model status: {str(e)}"
-        )
+    else:
+        return {
+            "status": "not_loaded"
+        }

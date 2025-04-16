@@ -7,11 +7,11 @@ from typing import Dict, Any
 import asyncio
 
 # Import our modules
-from services.cobol_service import analyze_cobol_code
+from services.cobol_service import analyze_cobol_code, get_file_content
 from services.db_file_service import store_file_db, get_file_db
 from services.llm_service import get_llm_service
 from database import get_db
-from backend.routes.api import llm_lock  # Import the shared lock
+from routes.api import llm_lock  # Import the shared lock
 
 # Configure logging
 logger = logging.getLogger("api-file-routes")
