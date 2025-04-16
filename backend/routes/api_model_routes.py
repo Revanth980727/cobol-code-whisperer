@@ -8,9 +8,9 @@ from services.llm_service import get_llm_service
 logger = logging.getLogger("api-model-routes")
 
 # Create router
-router = APIRouter(tags=["model-api"])
+router = APIRouter(prefix="/model-status", tags=["model-api"])
 
-@router.get("/model-status")
+@router.get("/")
 async def get_model_status():
     """Get status of the LLM model"""
     llm_service = get_llm_service()
