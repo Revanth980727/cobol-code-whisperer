@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -22,6 +23,16 @@ export interface AnalysisResultsProps {
       linesOfCode: number;
       commentPercentage: number;
     };
+    callGraph?: Record<string, string[]>;
+    dataFlow?: Record<string, Array<{variable: string, operation: string}>>;
+    chunks?: Array<{
+      type: string;
+      name: string;
+      content: string;
+      start_line: number;
+      end_line: number;
+      line_count: number;
+    }>;
   };
 }
 

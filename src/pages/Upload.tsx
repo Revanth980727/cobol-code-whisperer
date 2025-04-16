@@ -5,8 +5,8 @@ import Footer from '@/components/Footer';
 import UploadArea from '@/components/UploadArea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { analyzeCobolFile, AnalysisResult, checkModelStatus, ModelStatus } from '@/services/api';
-import ModelStatus from '@/components/upload/ModelStatus';
+import { analyzeCobolFile, AnalysisResult, checkModelStatus, ModelStatus as ModelStatusType } from '@/services/api';
+import ModelStatusIndicator from '@/components/upload/ModelStatus';
 import CodeDisplay from '@/components/upload/CodeDisplay';
 import AnalysisDisplay from '@/components/upload/AnalysisDisplay';
 
@@ -17,7 +17,7 @@ const Upload = () => {
   const [cobolCode, setCobolCode] = useState<string>('');
   const [analysisResults, setAnalysisResults] = useState<AnalysisResult | null>(null);
   const [activeTab, setActiveTab] = useState<string>('upload');
-  const [modelStatus, setModelStatus] = useState<ModelStatus | null>(null);
+  const [modelStatus, setModelStatus] = useState<ModelStatusType | null>(null);
   const [modelChecked, setModelChecked] = useState(false);
 
   useEffect(() => {
@@ -104,7 +104,7 @@ const Upload = () => {
               Upload your COBOL source files to generate documentation and extract business logic
             </p>
             
-            <ModelStatus 
+            <ModelStatusIndicator 
               modelStatus={modelStatus} 
               modelChecked={modelChecked} 
             />

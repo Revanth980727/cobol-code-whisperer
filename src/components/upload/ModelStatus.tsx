@@ -9,7 +9,7 @@ interface ModelStatusProps {
   modelChecked: boolean;
 }
 
-const ModelStatus: React.FC<ModelStatusProps> = ({ modelStatus, modelChecked }) => {
+const ModelStatusIndicator: React.FC<ModelStatusProps> = ({ modelStatus, modelChecked }) => {
   if (!modelStatus || !modelChecked) return null;
 
   return modelStatus.status === "ready" ? (
@@ -28,4 +28,4 @@ const ModelStatus: React.FC<ModelStatusProps> = ({ modelStatus, modelChecked }) 
   );
 };
 
-export default ModelStatus;
+export default ModelStatusIndicator;
