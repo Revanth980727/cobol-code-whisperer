@@ -8,10 +8,10 @@ import logging
 import asyncio
 
 # Import our sub-routers
-from backend.routes.api_model_routes import router as model_router
-from backend.routes.api_file_routes import router as file_router
-from backend.routes.api_feedback_routes import router as feedback_router
-from backend.routes.api_training_routes import router as training_router
+from routes.api_model_routes import router as model_router
+from routes.api_file_routes import router as file_router
+from routes.api_feedback_routes import router as feedback_router
+from routes.api_training_routes import router as training_router
 
 # Configure logging
 logger = logging.getLogger("cobol-whisperer-api")

@@ -26,11 +26,31 @@ class LlamaCppProvider(BaseModelProvider):
             from llama_cpp import Llama
             
             logger.info(f"Loading LLaMA 3 model using llama.cpp from {self.model_path}")
-            self.llm = Llama(
-                model_path=self.model_path,
-                n_ctx=4096,  # Context window size
-                n_threads=4  # Adjust based on your CPU
-            )
+            
+            # Add special config for ARM architectures
+            import platform
+            n_gpu_layers = 0  # CPU-only by default
+            
+            # Set specific options for ARM-based architectures
+            if platform.machine() in ('arm64', 'aarch64'):
+                logger.info("Detected ARM architecture, setting specific configurations")
+                self.llm = Llama(
+                    model_path=self.model_path,
+                    n_ctx=4096,  # Context window size
+                    n_threads=4,  # Adjust based on your CPU
+                    n_gpu_layers=n_gpu_layers,
+                    n_batch=512,  # Lower batch size for ARM
+                    verbose=False
+                )
+            else:
+                # Standard configuration for x86 architectures
+                self.llm = Llama(
+                    model_path=self.model_path,
+                    n_ctx=4096,
+                    n_threads=4,
+                    n_gpu_layers=n_gpu_layers
+                )
+                
             self.model_loaded = self.llm is not None
             logger.info(f"LLaMA 3 model loaded successfully: {self.model_loaded}")
         except Exception as e:

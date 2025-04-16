@@ -18,7 +18,7 @@ pygraphviz>=1.11
 # LLM integration
 transformers>=4.33.2
 torch>=2.0.1
-llama-cpp-python>=0.2.1
+llama-cpp-python>=0.2.24
 accelerate>=0.23.0
 
 # Utilities
