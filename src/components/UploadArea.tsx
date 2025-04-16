@@ -33,6 +33,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onFileUpload, isUploading }) =>
   };
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log("File input changed:", e.target.files);
     if (e.target.files && e.target.files.length > 0) {
       const uploadedFile = e.target.files[0];
       validateAndSetFile(uploadedFile);
@@ -40,6 +41,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onFileUpload, isUploading }) =>
   };
 
   const validateAndSetFile = (uploadedFile: File) => {
+    console.log("Validating file:", uploadedFile.name, uploadedFile.size);
     const fileName = uploadedFile.name.toLowerCase();
     const isCobolFile = fileName.endsWith('.cob') || 
                        fileName.endsWith('.cbl') || 
@@ -102,3 +104,4 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onFileUpload, isUploading }) =>
 };
 
 export default UploadArea;
+

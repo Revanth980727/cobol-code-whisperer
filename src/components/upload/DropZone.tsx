@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { Upload, FileUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -9,6 +9,15 @@ interface DropZoneProps {
 }
 
 const DropZone: React.FC<DropZoneProps> = ({ isDragging, onFileInput }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const handleBrowseClick = () => {
+    // Trigger the hidden file input click when the button is clicked
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+  
   return (
     <>
       <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-muted">
@@ -22,22 +31,25 @@ const DropZone: React.FC<DropZoneProps> = ({ isDragging, onFileInput }) => {
         Supports .cob, .cbl, .cobol, and .cpy files
       </p>
       <div className="mt-6">
-        <label htmlFor="file-upload" className="cursor-pointer">
-          <Button variant="outline">
-            <FileUp className="mr-2 h-4 w-4" />
-            Browse files
-          </Button>
-          <input 
-            id="file-upload" 
-            type="file" 
-            className="hidden" 
-            accept=".cob,.cbl,.cobol,.cpy,text/plain" 
-            onChange={onFileInput} 
-          />
-        </label>
+        <Button 
+          variant="outline" 
+          onClick={handleBrowseClick}
+        >
+          <FileUp className="mr-2 h-4 w-4" />
+          Browse files
+        </Button>
+        <input 
+          id="file-upload" 
+          ref={fileInputRef}
+          type="file" 
+          className="hidden" 
+          accept=".cob,.cbl,.cobol,.cpy,text/plain" 
+          onChange={onFileInput} 
+        />
       </div>
     </>
   );
 };
 
 export default DropZone;
+
