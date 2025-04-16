@@ -37,6 +37,8 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onFileUpload, isUploading }) =>
     if (e.target.files && e.target.files.length > 0) {
       const uploadedFile = e.target.files[0];
       validateAndSetFile(uploadedFile);
+    } else {
+      console.log("No files selected in the input");
     }
   };
 
@@ -104,4 +106,3 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onFileUpload, isUploading }) =>
 };
 
 export default UploadArea;
-

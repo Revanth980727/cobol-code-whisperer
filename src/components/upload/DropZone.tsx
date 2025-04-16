@@ -13,7 +13,9 @@ const DropZone: React.FC<DropZoneProps> = ({ isDragging, onFileInput }) => {
   
   const handleBrowseClick = () => {
     // Trigger the hidden file input click when the button is clicked
+    console.log("Browse button clicked");
     if (fileInputRef.current) {
+      console.log("Triggering file input click");
       fileInputRef.current.click();
     }
   };

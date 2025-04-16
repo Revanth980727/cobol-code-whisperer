@@ -56,6 +56,7 @@ export interface ModelStatus {
 // Check if the LLM model is loaded and ready
 export const checkModelStatus = async (): Promise<ModelStatus> => {
   try {
+    console.log("Checking model status at:", `${API_URL}/api/model-status`);
     const response = await fetch(`${API_URL}/api/model-status`);
     
     if (!response.ok) {
@@ -75,6 +76,8 @@ export const analyzeCobolFile = async (file: File): Promise<AnalysisResult> => {
   try {
     const formData = new FormData();
     formData.append("file", file);
+    
+    console.log("Sending file analysis request to:", `${API_URL}/api/analyze-code/`);
 
     const response = await fetch(`${API_URL}/api/analyze-code/`, {
       method: "POST",
@@ -83,6 +86,7 @@ export const analyzeCobolFile = async (file: File): Promise<AnalysisResult> => {
 
     if (!response.ok) {
       const errorData = await response.json();
+      console.error("Analysis failed:", response.status, errorData);
       throw new Error(errorData.detail || "Failed to analyze file");
     }
 
