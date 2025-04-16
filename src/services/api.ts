@@ -59,7 +59,8 @@ export const checkModelStatus = async (): Promise<ModelStatus> => {
     const response = await fetch(`${API_URL}/api/model-status`);
     
     if (!response.ok) {
-      throw new Error("Failed to check model status");
+      console.error("Failed to check model status:", response.status, response.statusText);
+      throw new Error(`Failed to check model status: ${response.status}`);
     }
     
     return await response.json();

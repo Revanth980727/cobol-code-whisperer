@@ -34,6 +34,7 @@ const DropZone: React.FC<DropZoneProps> = ({ isDragging, onFileInput }) => {
         <Button 
           variant="outline" 
           onClick={handleBrowseClick}
+          type="button"
         >
           <FileUp className="mr-2 h-4 w-4" />
           Browse files
@@ -52,4 +53,3 @@ const DropZone: React.FC<DropZoneProps> = ({ isDragging, onFileInput }) => {
 };
 
 export default DropZone;
-
