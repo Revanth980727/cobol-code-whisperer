@@ -1,7 +1,8 @@
 
 import { toast } from "sonner";
 
-const API_URL = "http://localhost:8000";
+// Change from absolute URL to relative URL to avoid CORS and connection issues
+const API_URL = "/api";
 
 export interface AnalysisResult {
   file_id: string;
@@ -55,7 +56,7 @@ export interface ModelStatus {
 // Check if the LLM model is loaded and ready
 export const checkModelStatus = async (): Promise<ModelStatus> => {
   try {
-    const url = `${API_URL}/api/model-status`;
+    const url = `${API_URL}/model-status`;
     console.log("Checking model status at:", url);
     
     const response = await fetch(url);
@@ -80,7 +81,7 @@ export const analyzeCobolFile = async (file: File): Promise<AnalysisResult> => {
     const formData = new FormData();
     formData.append("file", file);
     
-    const url = `${API_URL}/api/analyze-code/`;
+    const url = `${API_URL}/analyze-code/`;
     console.log("Sending file analysis request to:", url);
 
     const response = await fetch(url, {
@@ -109,7 +110,7 @@ export const analyzeCobolFile = async (file: File): Promise<AnalysisResult> => {
 // Function to submit feedback on analysis
 export const submitFeedback = async (feedback: FeedbackData): Promise<void> => {
   try {
-    const response = await fetch(`${API_URL}/api/feedback/`, {
+    const response = await fetch(`${API_URL}/feedback/`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -137,7 +138,7 @@ export const submitFeedback = async (feedback: FeedbackData): Promise<void> => {
 // Function to get all feedback
 export const getAllFeedback = async (): Promise<FeedbackData[]> => {
   try {
-    const response = await fetch(`${API_URL}/api/feedback/`);
+    const response = await fetch(`${API_URL}/feedback/`);
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -158,7 +159,7 @@ export const getAllFeedback = async (): Promise<FeedbackData[]> => {
 // Function to get file content by ID
 export const getFileContent = async (fileId: string): Promise<{ filename: string; content: string; lines: number }> => {
   try {
-    const response = await fetch(`${API_URL}/api/file/${fileId}`);
+    const response = await fetch(`${API_URL}/file/${fileId}`);
 
     if (!response.ok) {
       const errorData = await response.json();
