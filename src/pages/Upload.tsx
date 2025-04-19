@@ -59,9 +59,9 @@ const Upload = () => {
   };
 
   const handleAnalyzeCode = async (fileToAnalyze: File) => {
-    if (modelStatus?.status === "not_loaded") {
-      toast.error("LLaMA 3 model is not loaded", {
-        description: "The backend LLM is not available. Analysis will use fallback methods."
+    if (modelStatus?.status !== "ready") {
+      toast.warning("LLaMA 3 model may not be fully loaded", {
+        description: "Analysis might use fallback methods or have reduced accuracy."
       });
     }
     
