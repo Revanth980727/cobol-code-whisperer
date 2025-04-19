@@ -10,8 +10,8 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import the Base object and models
-from backend.database import Base
-from backend.models.database_models import UploadedFile, AnalysisResult, CodeChunk, Feedback, ModelVersion, TrainingJob
+from database import Base
+from models.database_models import UploadedFile, AnalysisResult, CodeChunk, Feedback, ModelVersion, TrainingJob
 
 # this is the Alembic Config object
 config = context.config
@@ -20,7 +20,7 @@ config = context.config
 fileConfig(config.config_file_name)
 
 # Set the database URL in the alembic config
-from backend.database import SYNC_DATABASE_URL
+from database import SYNC_DATABASE_URL
 config.set_main_option("sqlalchemy.url", SYNC_DATABASE_URL)
 
 # Add your model's MetaData object here

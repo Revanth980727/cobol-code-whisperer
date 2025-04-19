@@ -5,7 +5,7 @@ from sqlalchemy.sql import func
 import uuid
 from datetime import datetime
 
-from backend.database import Base
+from database import Base
 
 def generate_uuid():
     return str(uuid.uuid4())

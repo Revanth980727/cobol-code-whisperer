@@ -8,8 +8,14 @@ mkdir -p data/feedback
 mkdir -p data/training
 mkdir -p models/finetuned
 
-# Run database migrations
+# Show current directory structure for debugging
+echo "Current directory: $(pwd)"
+echo "Directory contents:"
+ls -la
+
+# Run database migrations with proper path
 echo "Running database migrations..."
+export PYTHONPATH=$(pwd)
 alembic upgrade head
 
 # Start the FastAPI application
