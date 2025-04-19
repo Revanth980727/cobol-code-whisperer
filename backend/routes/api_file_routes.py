@@ -17,9 +17,9 @@ from routes.api import llm_lock  # Import the shared lock
 logger = logging.getLogger("api-file-routes")
 
 # Create router
-router = APIRouter(tags=["file-api"])
+router = APIRouter(prefix="", tags=["file-api"])  # Remove prefix to match expected route structure
 
-@router.post("/analyze-code/")
+@router.post("/api/analyze-code/")  # Update the route to include /api prefix
 async def analyze_code(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
@@ -90,7 +90,7 @@ async def analyze_code(
             detail=f"Error analyzing code: {str(e)}"
         )
 
-@router.get("/file/{file_id}")
+@router.get("/api/file/{file_id}")  # Update the route to include /api prefix
 async def get_file_content_handler(file_id: str, db: AsyncSession = Depends(get_db)):
     """Get content of a specific file"""
     try:

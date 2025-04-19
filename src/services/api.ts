@@ -44,30 +44,33 @@ export interface FeedbackData {
 }
 
 export interface ModelStatus {
-  status: "ready" | "not_loaded";
-  model_info?: {
-    name?: string;
-    type?: string;
-    parameters?: number;
-    loaded_at?: string;
-  };
+  status: "ready" | "loading" | "error";
+  model_name?: string;
+  context_length?: number;
+  device?: string;
+  quantization?: string;
+  error?: string;
 }
 
 // Check if the LLM model is loaded and ready
 export const checkModelStatus = async (): Promise<ModelStatus> => {
   try {
-    console.log("Checking model status at:", `${API_URL}/api/model-status`);
-    const response = await fetch(`${API_URL}/api/model-status`);
+    const url = `${API_URL}/api/model-status`;
+    console.log("Checking model status at:", url);
+    
+    const response = await fetch(url);
     
     if (!response.ok) {
       console.error("Failed to check model status:", response.status, response.statusText);
       throw new Error(`Failed to check model status: ${response.status}`);
     }
     
-    return await response.json();
+    const data = await response.json();
+    console.log("Model status response:", data);
+    return data;
   } catch (error) {
     console.error("Error checking model status:", error);
-    return { status: "not_loaded" };
+    return { status: "error", error: error instanceof Error ? error.message : "Unknown error" };
   }
 };
 
@@ -77,9 +80,10 @@ export const analyzeCobolFile = async (file: File): Promise<AnalysisResult> => {
     const formData = new FormData();
     formData.append("file", file);
     
-    console.log("Sending file analysis request to:", `${API_URL}/api/analyze-code/`);
+    const url = `${API_URL}/api/analyze-code/`;
+    console.log("Sending file analysis request to:", url);
 
-    const response = await fetch(`${API_URL}/api/analyze-code/`, {
+    const response = await fetch(url, {
       method: "POST",
       body: formData,
     });
@@ -90,7 +94,9 @@ export const analyzeCobolFile = async (file: File): Promise<AnalysisResult> => {
       throw new Error(errorData.detail || "Failed to analyze file");
     }
 
-    return await response.json();
+    const data = await response.json();
+    console.log("Analysis response:", data);
+    return data;
   } catch (error) {
     console.error("Error analyzing file:", error);
     toast.error("Failed to analyze COBOL file", {

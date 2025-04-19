@@ -41,7 +41,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include our routers
+# Include our routers - include without a prefix since routes already have /api prefix
 app.include_router(api_router)
 
 # Add middleware for tracking requests

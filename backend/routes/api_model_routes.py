@@ -7,9 +7,9 @@ import logging
 logger = logging.getLogger("api-model-routes")
 
 # Create router
-router = APIRouter(tags=["model-api"])
+router = APIRouter(prefix="", tags=["model-api"])  # Remove prefix to match expected route structure
 
-@router.get("/model-status")
+@router.get("/api/model-status")  # Update the route to include /api prefix
 async def get_model_status():
     """Check if the LLM model is loaded and ready"""
     llm_service = get_llm_service()

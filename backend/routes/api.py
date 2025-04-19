@@ -16,10 +16,10 @@ from routes.api_training_routes import router as training_router
 # Configure logging
 logger = logging.getLogger("cobol-whisperer-api")
 
-# Create main API router
-router = APIRouter(prefix="/api", tags=["cobol-api"])
+# Create main API router - remove the prefix here since we're adding /api in the individual routes
+router = APIRouter(tags=["cobol-api"])
 
-# Include all sub-routers
+# Include all sub-routers without additional prefixes
 router.include_router(model_router)
 router.include_router(file_router)
 router.include_router(feedback_router)
@@ -33,7 +33,7 @@ class ErrorResponse(BaseModel):
     error_code: Optional[str] = None
     timestamp: str = Field(default_factory=lambda: datetime.now().isoformat())
 
-@router.get("/")
+@router.get("/api")
 def read_root():
     return {"status": "COBOL Code Whisperer API is running"}
 
