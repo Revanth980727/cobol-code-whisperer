@@ -43,7 +43,7 @@ def analyze_cobol_code(file_id: str, filename: str, file_content: bytes) -> Dict
     complexity = calculate_complexity(code)
     
     # Analyze with LLM
-    llm_analysis = analyze_with_llm(code)
+    llm_analysis = analyze_with_llm(code, parsed_data["chunks"])
     
     # Combine all analysis results
     analysis_result = {
@@ -60,7 +60,7 @@ def analyze_cobol_code(file_id: str, filename: str, file_content: bytes) -> Dict
     
     return analysis_result
 
-def analyze_with_llm(code: str, structured_parsing: bool = True) -> dict:
+def analyze_with_llm(code: str, chunks: list = None, structured_parsing: bool = True) -> dict:
     """Use LLM to analyze COBOL code with chunking."""
     llm_service = get_llm_service()
     
@@ -84,10 +84,14 @@ def analyze_with_llm(code: str, structured_parsing: bool = True) -> dict:
             return high_level_analysis
             
         # Otherwise, proceed with detailed chunk analysis
-        # Parse the code into chunks for detailed analysis
-        parser = CobolParser(code)
-        parsed_data = parser.parse_code(code, use_antlr=USE_ANTLR)
-        chunks = parsed_data["chunks"]
+        chunk_analyses = []
+        
+        # If chunks were passed in, use them; otherwise parse the code first
+        if not chunks:
+            # Parse the code into chunks for detailed analysis
+            parser = CobolParser(code)
+            parsed_data = parser.parse_code(code, use_antlr=USE_ANTLR)
+            chunks = parsed_data["chunks"]
         
         # Select important chunks to analyze (to avoid too many API calls)
         # For now, let's analyze all divisions and a few key paragraphs/sections
@@ -105,7 +109,6 @@ def analyze_with_llm(code: str, structured_parsing: bool = True) -> dict:
         chunks_to_analyze.extend(procedure_chunks[:3])
         
         # Analyze each selected chunk
-        chunk_analyses = []
         for chunk in chunks_to_analyze:
             analysis = llm_service.analyze_code(
                 chunk["content"], 
@@ -118,6 +121,9 @@ def analyze_with_llm(code: str, structured_parsing: bool = True) -> dict:
                 "chunk_name": chunk["name"],
                 "analysis": analysis
             })
+            
+            # Add the analysis back to the chunk
+            chunk["analysis"] = analysis
         
         # Extract additional business rules from chunk analyses
         additional_rules = []
@@ -135,6 +141,7 @@ def analyze_with_llm(code: str, structured_parsing: bool = True) -> dict:
         existing_rules.extend(additional_rules)
         
         high_level_analysis["business_rules"] = existing_rules
+        high_level_analysis["chunk_analyses"] = chunk_analyses
         
         return high_level_analysis
     except Exception as e:

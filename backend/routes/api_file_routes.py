@@ -3,7 +3,7 @@ from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks,
 from sqlalchemy.ext.asyncio import AsyncSession
 import logging
 import uuid
-from typing import Dict, Any
+from typing import Dict, Any, List
 import asyncio
 
 # Import our modules
@@ -56,6 +56,27 @@ async def analyze_code(
             
             # Analyze the code
             analysis_result = analyze_cobol_code(file_id, file.filename, file_content)
+        
+        # Format the result with the specified chunk structure
+        structured_chunks = []
+        for chunk in analysis_result.get('chunks', []):
+            structured_chunk = {
+                "chunk_id": chunk["name"],
+                "type": chunk["type"],
+                "code": chunk["content"],
+                "start_line": chunk["start_line"],
+                "end_line": chunk["end_line"],
+                "summary": ""  # Will be filled by LLM analysis if available
+            }
+            
+            # Add LLM analysis if present
+            if "analysis" in chunk:
+                structured_chunk["summary"] = chunk["analysis"].get("summary", "")
+            
+            structured_chunks.append(structured_chunk)
+            
+        # Enhance the response with the structured chunks
+        analysis_result["structured_chunks"] = structured_chunks
         
         return analysis_result
         

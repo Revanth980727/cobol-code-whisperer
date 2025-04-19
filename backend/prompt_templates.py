@@ -18,6 +18,7 @@ COBOL CODE:
 
 Provide your analysis in a structured JSON format with 'summary' and 'business_rules' keys.
 Make your summary concise (2-3 sentences) and focus on business function, not technical details.
+For business_rules, provide an array of strings, each describing one business rule.
 """
 
     DATA_DIVISION_TEMPLATE = """
@@ -29,6 +30,8 @@ As a COBOL expert, analyze this DATA DIVISION:
 
 Identify the key data structures, files, and variables used in the program.
 List important business data elements and their purposes.
+
+Provide your response in JSON format with 'summary' and 'business_rules' keys.
 """
 
     PROCEDURE_DIVISION_TEMPLATE = """
@@ -40,6 +43,8 @@ As a COBOL expert, analyze this PROCEDURE DIVISION:
 
 Summarize the main processing flow and key business operations.
 Identify the primary business rules implemented in this code.
+
+Provide your response in JSON format with 'summary' and 'business_rules' keys.
 """
 
     SECTION_TEMPLATE = """
@@ -51,6 +56,8 @@ As a COBOL expert, analyze this {{ section_name }} SECTION:
 
 Explain the purpose of this section and its role in the program's business logic.
 Identify any business rules implemented here.
+
+Provide your response in JSON format with 'summary' and 'business_rules' keys.
 """
 
     PARAGRAPH_TEMPLATE = """
@@ -62,6 +69,8 @@ As a COBOL expert, analyze this {{ paragraph_name }} paragraph:
 
 Explain what this paragraph does in business terms.
 Identify any specific business rules implemented in this paragraph.
+
+Provide your response in JSON format with 'summary' and 'business_rules' keys.
 """
 
     @classmethod
@@ -73,24 +82,25 @@ Identify any specific business rules implemented in this paragraph.
     @classmethod
     def program_summary_prompt(cls, code: str) -> str:
         """Generate a prompt for overall program summary."""
+        # Truncate code to 3500 characters to stay within token limits
         return cls.render_template(cls.PROGRAM_SUMMARY_TEMPLATE, {"code": code[:3500]})
     
     @classmethod
     def data_division_prompt(cls, code: str) -> str:
         """Generate a prompt for DATA DIVISION analysis."""
-        return cls.render_template(cls.DATA_DIVISION_TEMPLATE, {"code": code})
+        return cls.render_template(cls.DATA_DIVISION_TEMPLATE, {"code": code[:2500]})
     
     @classmethod
     def procedure_division_prompt(cls, code: str) -> str:
         """Generate a prompt for PROCEDURE DIVISION analysis."""
-        return cls.render_template(cls.PROCEDURE_DIVISION_TEMPLATE, {"code": code})
+        return cls.render_template(cls.PROCEDURE_DIVISION_TEMPLATE, {"code": code[:3000]})
     
     @classmethod
     def section_prompt(cls, section_name: str, code: str) -> str:
         """Generate a prompt for section analysis."""
         return cls.render_template(cls.SECTION_TEMPLATE, {
             "section_name": section_name, 
-            "code": code
+            "code": code[:2500]
         })
     
     @classmethod
@@ -98,5 +108,5 @@ Identify any specific business rules implemented in this paragraph.
         """Generate a prompt for paragraph analysis."""
         return cls.render_template(cls.PARAGRAPH_TEMPLATE, {
             "paragraph_name": paragraph_name, 
-            "code": code
+            "code": code[:2000]
         })
