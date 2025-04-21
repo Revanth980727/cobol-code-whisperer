@@ -16,7 +16,10 @@ ls -la
 # Run database migrations with proper path
 echo "Running database migrations..."
 export PYTHONPATH=$(pwd)
+# Use the -c flag to specify the location of the alembic.ini file
+cd migrations
 alembic upgrade head
+cd ..
 
 # Start the FastAPI application
 echo "Starting COBOL Whisperer API..."
